@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from detfuzz.models import CaseKind, CaseSpec
 
-
 V0_CASES: tuple[CaseSpec, ...] = (
     CaseSpec(
         case_id="B0",

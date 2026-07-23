@@ -1,13 +1,18 @@
 # DetFuzz v0 Evidence
 
-This folder points to the final portfolio evidence package:
+This folder records the identity of the external portfolio evidence package:
 
 ```text
 evidence/portfolio-v0-evidence.zip
 SHA256 7c58fd3ee092abf19841f6ea738f4674d6f138e81e779731283077b3d577dd85
 ```
 
-The evidence archive contains the real Windows VM run for suite:
+The archive is not checked into this repository. Therefore a source clone
+cannot independently verify the report hashes below. Obtain the archive through
+the portfolio delivery channel and verify its SHA256 before treating the VM run
+as proven.
+
+When present, the evidence archive contains the real Windows VM run for suite:
 
 ```text
 dc017824-0d4e-41d0-9d32-610b410accb0

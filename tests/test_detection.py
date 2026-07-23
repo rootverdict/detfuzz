@@ -1,17 +1,16 @@
-import unittest
 import importlib.util
+import unittest
 from pathlib import Path
 
 from detfuzz.detection import (
-    V0_SIGMA_RULE_PATH,
     V0_ENCODED_POWERSHELL_RULE,
+    V0_SIGMA_RULE_PATH,
     evaluate_detection_rule,
     extract_rule_dependencies_from_sigma_dict,
     load_detection_rule_from_sigma,
     load_sigma_with_pysigma,
 )
 from detfuzz.telemetry import parse_sysmon_event_xml
-
 
 SAMPLE_EVENT = """\
 <Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">

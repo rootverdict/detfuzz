@@ -5,7 +5,6 @@ from typing import Any
 
 from detfuzz.models import DetectionResult, DetectionRule, RuleDependency, SysmonEvent
 
-
 V0_SIGMA_RULE_PATH = (
     Path(__file__).resolve().parent
     / "configs"

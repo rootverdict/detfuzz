@@ -8,6 +8,7 @@ from pathlib import Path
 
 from detfuzz.cases import V0_CASES
 from detfuzz.models import CaseSpec, PreparedCase, ProcessExecution, SuiteContext
+from detfuzz.mutations import build_v0_command
 from detfuzz.payloads import encode_powershell_command, marker_payload
 
 ALLOWED_CASE_IDS = {case.case_id for case in V0_CASES}
@@ -68,30 +69,7 @@ def command_line_for_case(
     powershell_path: str = "powershell.exe",
 ) -> str:
     quoted_exe = quote_windows_arg(powershell_path)
-
-    match case.case_id:
-        case "B0" | "B1":
-            return f"{quoted_exe} -NoProfile -NonInteractive -EncodedCommand {encoded_payload}"
-        case "M1":
-            return f"{quoted_exe} -NoProfile -NonInteractive -enc {encoded_payload}"
-        case "M2":
-            return f"{quoted_exe} -NoProfile -NonInteractive -eNcOdEdCoMmAnD {encoded_payload}"
-        case "M3":
-            return (
-                f"{quoted_exe}    -NoProfile    -NonInteractive    "
-                f"-EncodedCommand    {encoded_payload}"
-            )
-        case "M4":
-            return (
-                f"{quoted_exe} -NoProfile -NonInteractive "
-                f'"-EncodedCommand" {encoded_payload}'
-            )
-        case "M5":
-            return f"{quoted_exe} -NonInteractive -NoProfile -EncodedCommand {encoded_payload}"
-        case "NC1":
-            return f"{quoted_exe} -NoProfile -NonInteractive -EncodedCommand !!!invalid-base64!!!"
-        case _:
-            raise ValueError(f"case is not allow-listed: {case.case_id}")
+    return build_v0_command(case.case_id, quoted_exe, encoded_payload)
 
 
 def execute_prepared_case(

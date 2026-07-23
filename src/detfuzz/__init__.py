@@ -1,9 +1,9 @@
 """DetFuzz local core package."""
 
 from detfuzz.benign import V01_BENIGN_FIXTURES, run_benign_fixtures
-from detfuzz.classifier import classify_case
 from detfuzz.calibration import calibrate_timeouts, run_clock_preflight
 from detfuzz.cases import V0_CASES
+from detfuzz.classifier import classify_case
 from detfuzz.detection import V0_ENCODED_POWERSHELL_RULE, evaluate_detection_rule
 from detfuzz.models import CaseObservation, Classification, ProcessCorrelationCriteria
 from detfuzz.oracle import validate_marker

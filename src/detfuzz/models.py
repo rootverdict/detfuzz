@@ -143,6 +143,7 @@ class DetectionResult:
     matched: bool
     reason: str
     dependency_results: dict[str, bool] = field(default_factory=dict)
+    error: bool = False
 
 
 @dataclass(frozen=True)

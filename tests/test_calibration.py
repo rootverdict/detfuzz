@@ -103,10 +103,14 @@ class CalibrationTests(unittest.TestCase):
             )
 
         with tempfile.TemporaryDirectory() as root:
-            with patch("detfuzz.calibration.execute_prepared_case", fake_execute), patch(
-                "detfuzz.calibration.validate_marker",
-                lambda prepared, execution: MarkerValidation(True, True, "MARKER_VALID"),
-            ), patch("detfuzz.calibration._query_calibration_telemetry", fake_telemetry):
+            with (
+                patch("detfuzz.calibration.execute_prepared_case", fake_execute),
+                patch(
+                    "detfuzz.calibration.validate_marker",
+                    lambda prepared, execution: MarkerValidation(True, True, "MARKER_VALID"),
+                ),
+                patch("detfuzz.calibration._query_calibration_telemetry", fake_telemetry),
+            ):
                 result = calibrate_timeouts(Path(root), host="DetFuzz-Win11-Lab", runs=2)
 
             self.assertEqual(result["status"], "PASS")
@@ -127,16 +131,29 @@ class CalibrationTests(unittest.TestCase):
                 stderr="",
             )
 
+        def fake_query(
+            prepared_case_id,
+            execution,
+            host,
+            max_events,
+            telemetry_timeout_seconds,
+        ):
+            return TelemetryValidation(
+                False,
+                "NO_MATCHING_PROCESS_CREATE_EVENT",
+                None,
+            )
+
         with tempfile.TemporaryDirectory() as root:
-            with patch("detfuzz.calibration.execute_prepared_case", fake_execute), patch(
-                "detfuzz.calibration.validate_marker",
-                lambda prepared, execution: MarkerValidation(True, True, "MARKER_VALID"),
-            ), patch(
-                "detfuzz.calibration._query_calibration_telemetry",
-                lambda prepared_case_id, execution, host, max_events, telemetry_timeout_seconds: TelemetryValidation(
-                    False,
-                    "NO_MATCHING_PROCESS_CREATE_EVENT",
-                    None,
+            with (
+                patch("detfuzz.calibration.execute_prepared_case", fake_execute),
+                patch(
+                    "detfuzz.calibration.validate_marker",
+                    lambda prepared, execution: MarkerValidation(True, True, "MARKER_VALID"),
+                ),
+                patch(
+                    "detfuzz.calibration._query_calibration_telemetry",
+                    fake_query,
                 ),
             ):
                 result = calibrate_timeouts(Path(root), host="DetFuzz-Win11-Lab", runs=1)

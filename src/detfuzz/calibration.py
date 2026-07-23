@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import subprocess
 from collections.abc import Callable
-from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 from statistics import median
@@ -145,21 +144,12 @@ def calibrate_timeouts(
             }
         )
 
-    process_values = [
-        int(item["process_duration_ms"])
-        for item in observations
-        if item["process_duration_ms"] is not None
-    ]
-    telemetry_values = [
-        int(item["telemetry_latency_ms"])
-        for item in observations
-        if item["telemetry_latency_ms"] is not None
-    ]
-    query_values = [
-        int(item["telemetry_query_duration_ms"])
-        for item in observations
-        if item["telemetry_query_duration_ms"] is not None
-    ]
+    process_values = _integer_measurements(observations, "process_duration_ms")
+    telemetry_values = _integer_measurements(observations, "telemetry_latency_ms")
+    query_values = _integer_measurements(
+        observations,
+        "telemetry_query_duration_ms",
+    )
 
     selected_telemetry_timeout = _selected_timeout_seconds(telemetry_values)
     selected_process_timeout = _selected_timeout_seconds(process_values)
@@ -305,6 +295,18 @@ def _selected_timeout_seconds(values: list[int]) -> int:
     if not values:
         return MAXIMUM_STABLE_TIMEOUT_SECONDS
     return max(30, int(max(values) / 1000) + 10)
+
+
+def _integer_measurements(
+    observations: list[dict[str, object]],
+    key: str,
+) -> list[int]:
+    values: list[int] = []
+    for observation in observations:
+        value = observation.get(key)
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            values.append(int(value))
+    return values
 
 
 def _summary(values: list[int]) -> dict[str, int | None]:

@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/rootverdict/detfuzz/blob/main/src/detfuzz/contracts/detfuzz-suite-report-1.0.schema.json",
+  "title": "DetFuzz Suite Report",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at_utc",
+    "suite_id",
+    "suite_status",
+    "environment",
+    "case_count",
+    "classification_counts",
+    "cases",
+    "evidence_manifest"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "generated_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "suite_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "suite_status": {
+      "type": "string",
+      "minLength": 1
+    },
+    "abort_reason": {
+      "type": ["string", "null"]
+    },
+    "environment": {
+      "type": "object",
+      "properties": {
+        "host": { "type": "string" },
+        "telemetry": { "type": "string" },
+        "rule_id": { "type": "string", "minLength": 1 },
+        "rule_slug": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "case_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "classification_counts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/case"
+      }
+    },
+    "evidence_manifest": {
+      "$ref": "#/$defs/evidenceManifest"
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "case": {
+      "type": "object",
+      "required": ["case_id", "classification"],
+      "properties": {
+        "case_id": { "type": "string", "minLength": 1 },
+        "classification": { "type": "string", "minLength": 1 },
+        "marker_valid": { "type": ["boolean", "null"] },
+        "telemetry_valid": { "type": ["boolean", "null"] },
+        "executable_identity_valid": { "type": ["boolean", "null"] },
+        "detection_matched": { "type": ["boolean", "null"] },
+        "rule_id": { "type": ["string", "null"] },
+        "detection_reason": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "evidenceFile": {
+      "type": "object",
+      "required": ["path", "size_bytes", "sha256"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?![A-Za-z]:|/|.*(?:^|/)\\.\\.(?:/|$)).+$"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[A-Fa-f0-9]{64}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "evidenceManifest": {
+      "type": "object",
+      "required": ["root", "files"],
+      "properties": {
+        "root": { "type": "string" },
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidenceFile"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

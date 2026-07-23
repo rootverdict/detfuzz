@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from detfuzz.contract import validate_suite_report_shape
 from detfuzz.models import (
     CaseObservation,
     Classification,
@@ -77,11 +78,16 @@ def build_suite_report(
     generated = generated_at_utc or datetime.now(UTC).isoformat()
     cases = suite_results["cases"]
     classifications = _classification_counts(cases)
+    suite_status = suite_results.get("suite_status")
+    if suite_status is None:
+        suite_status = "UNKNOWN"
+    elif not isinstance(suite_status, str) or not suite_status.strip():
+        raise ValueError("suite_status must be a non-empty string when provided")
     return {
         "schema_version": "1.0",
         "generated_at_utc": generated,
         "suite_id": suite_results["suite_id"],
-        "suite_status": suite_results.get("suite_status"),
+        "suite_status": suite_status,
         "abort_reason": suite_results.get("abort_reason"),
         "environment": suite_results.get("environment", {}),
         "case_count": len(cases),
@@ -144,6 +150,7 @@ def write_report_bundle(
     suite_results = load_suite_results(suite_results_path)
     manifest = build_evidence_manifest(evidence_root)
     report = build_suite_report(suite_results, manifest)
+    validate_suite_report_shape(report)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     json_path = output_dir / "suite-report.json"

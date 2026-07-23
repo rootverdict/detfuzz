@@ -13,13 +13,13 @@ from detfuzz.benign import (
 from detfuzz.calibration import calibrate_timeouts, run_clock_preflight
 from detfuzz.cases import V0_CASES
 from detfuzz.classifier import classify_case, finalize_candidate
+from detfuzz.contract import export_suite_report_schema
 from detfuzz.detection import V0_ENCODED_POWERSHELL_RULE, evaluate_detection_rule
 from detfuzz.models import CaseObservation, ProcessCorrelationCriteria
 from detfuzz.report import result_to_json, write_report_bundle
 from detfuzz.runner import create_suite, prepare_case
 from detfuzz.suite import run_v0_suite
 from detfuzz.telemetry import parse_sysmon_event_xml, query_and_correlate_process_create
-
 
 SIMULATION_NOTE = "SIMULATED - not from a real run"
 PREPARED_ONLY_NOTE = "PHASE_2_PREPARED_ONLY - commands generated but not executed"
@@ -163,6 +163,11 @@ def run_benign(args: argparse.Namespace) -> None:
         max_events=args.max_events,
     )
     print(json.dumps(result, indent=2, sort_keys=True, default=str))
+
+
+def export_contract(args: argparse.Namespace) -> None:
+    output = export_suite_report_schema(args.output)
+    print(json.dumps({"schema": str(output)}, indent=2, sort_keys=True))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -402,6 +407,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="Number of recent Sysmon events to inspect per fixture.",
     )
 
+    contract = subcommands.add_parser(
+        "export-contract",
+        help="Export the versioned DetFuzz suite-report JSON Schema.",
+    )
+    contract.add_argument(
+        "--output",
+        type=Path,
+        required=True,
+        help="Destination path for detfuzz-suite-report-1.0.schema.json.",
+    )
+
     return parser
 
 
@@ -447,6 +463,10 @@ def main() -> None:
 
     if args.command == "run-benign-fixtures":
         run_benign(args)
+        return
+
+    if args.command == "export-contract":
+        export_contract(args)
         return
 
     parser.error(f"unsupported command: {args.command}")

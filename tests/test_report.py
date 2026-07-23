@@ -114,6 +114,31 @@ class ReportTests(unittest.TestCase):
             self.assertTrue(paths["markdown_report"].exists())
             self.assertTrue(paths["evidence_manifest"].exists())
 
+    def test_write_report_bundle_defaults_missing_suite_status_to_unknown(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            workspace = Path(root)
+            evidence = workspace / "evidence"
+            evidence.mkdir()
+            suite_results = workspace / "suite-results.json"
+            suite_results.write_text(
+                json.dumps(
+                    {
+                        "suite_id": "suite-without-status",
+                        "cases": [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            paths = write_report_bundle(
+                suite_results,
+                evidence,
+                workspace / "reports",
+            )
+            report = json.loads(paths["json_report"].read_text(encoding="utf-8"))
+
+            self.assertEqual(report["suite_status"], "UNKNOWN")
+
     def test_load_suite_results_accepts_utf8_bom(self) -> None:
         with tempfile.TemporaryDirectory() as root:
             path = Path(root) / "suite-results.json"

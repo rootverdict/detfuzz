@@ -1,0 +1,5 @@
+# Direct dependency/tool pins used by CI and local release verification.
+# Regenerate deliberately when upgrading the supported toolchain.
+pysigma==1.4.0
+mypy==2.3.0
+ruff==0.15.22

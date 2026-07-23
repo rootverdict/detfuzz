@@ -5,6 +5,7 @@ from pathlib import Path
 
 from detfuzz.cases import V0_CASES
 from detfuzz.models import CaseKind, CaseSpec
+from detfuzz.mutations import MUTATION_OPERATORS
 from detfuzz.payloads import encode_powershell_command, marker_payload
 from detfuzz.runner import create_suite, prepare_case
 
@@ -59,6 +60,22 @@ class RunnerPreparationTests(unittest.TestCase):
                 self.assertTrue(prepared.command_line.startswith("powershell.exe "))
                 self.assertIn("-NoProfile", prepared.command_line)
                 self.assertIn("-NonInteractive", prepared.command_line)
+
+    def test_mutation_inventory_has_one_operator_per_mutation_case(self) -> None:
+        mutation_ids = {
+            case.case_id for case in V0_CASES if case.kind == CaseKind.MUTATION
+        }
+
+        self.assertEqual(set(MUTATION_OPERATORS), mutation_ids)
+
+    def test_mutations_preserve_the_encoded_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            suite = create_suite(Path(root))
+            for case in V0_CASES:
+                if case.kind != CaseKind.MUTATION:
+                    continue
+                prepared = prepare_case(suite, case)
+                self.assertIn(prepared.encoded_payload, prepared.command_line)
 
     def test_negative_control_uses_invalid_base64_and_expects_no_marker(self) -> None:
         nc1 = next(case for case in V0_CASES if case.case_id == "NC1")

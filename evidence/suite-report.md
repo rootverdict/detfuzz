@@ -1,5 +1,9 @@
 # DetFuzz Evidence Report
 
+> Unverified repository snapshot: the raw evidence files referenced by this
+> manifest are not checked in. Verify the external archive named in
+> `evidence/README.md` before relying on these hashes.
+
 Suite ID: `dc017824-0d4e-41d0-9d32-610b410accb0`
 Suite status: `COMPLETED`
 Generated UTC: `2026-07-21T10:36:09.423471+00:00`

@@ -4,11 +4,16 @@ import json
 import shutil
 from dataclasses import asdict
 from pathlib import Path
+from typing import Any
 
 from detfuzz.calibration import run_clock_preflight
 from detfuzz.cases import V0_CASES
 from detfuzz.classifier import classify_case, finalize_candidate
-from detfuzz.detection import V0_ENCODED_POWERSHELL_RULE, V0_SIGMA_RULE_PATH, evaluate_detection_rule
+from detfuzz.detection import (
+    V0_ENCODED_POWERSHELL_RULE,
+    V0_SIGMA_RULE_PATH,
+    evaluate_detection_rule,
+)
 from detfuzz.identity import expected_executable_sha256, validate_executable_identity
 from detfuzz.models import (
     CaseObservation,
@@ -19,7 +24,6 @@ from detfuzz.models import (
     PreparedCase,
     ProcessCorrelationCriteria,
     ProcessExecution,
-    SuiteContext,
     TelemetryValidation,
 )
 from detfuzz.oracle import validate_marker
@@ -205,7 +209,15 @@ def _query_telemetry(
 def _evaluate_detection(telemetry: TelemetryValidation) -> DetectionResult | None:
     if not telemetry.valid or telemetry.event is None:
         return None
-    return evaluate_detection_rule(V0_ENCODED_POWERSHELL_RULE, telemetry.event)
+    try:
+        return evaluate_detection_rule(V0_ENCODED_POWERSHELL_RULE, telemetry.event)
+    except Exception as error:  # noqa: BLE001 - classification preserves the failure.
+        return DetectionResult(
+            rule_id=V0_ENCODED_POWERSHELL_RULE.rule_id,
+            matched=False,
+            reason=f"DETECTION_ENGINE_ERROR:{type(error).__name__}:{error}",
+            error=True,
+        )
 
 
 def _build_observation(
@@ -224,7 +236,7 @@ def _build_observation(
         executable_identity_valid=identity.valid,
         telemetry_received=telemetry.event is not None,
         required_fields_present=telemetry.valid,
-        detection_engine_error=False,
+        detection_engine_error=False if detection is None else detection.error,
         rule_matched=False if detection is None else detection.matched,
         details={
             "marker_reason": marker.reason,
@@ -328,7 +340,7 @@ def _suite_health(cases: list[dict[str, object]]) -> tuple[str, str | None]:
     return "COMPLETED", None
 
 
-def _load_calibration_result(path: Path | None) -> dict[str, object] | None:
+def _load_calibration_result(path: Path | None) -> dict[str, Any] | None:
     if path is None:
         return None
     payload = json.loads(path.read_text(encoding="utf-8-sig"))

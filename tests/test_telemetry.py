@@ -1,18 +1,17 @@
-import unittest
 import subprocess
+import unittest
 
 from detfuzz.models import ProcessCorrelationCriteria, ProcessExecution
 from detfuzz.telemetry import (
-    parse_sysmon_event_xml,
-    parse_sysmon_event_xml_many,
     correlate_process_create_event,
     event_matches_process,
+    parse_sysmon_event_xml,
+    parse_sysmon_event_xml_many,
     query_and_correlate_process_create,
     query_sysmon_process_create_xml,
     validate_process_create_event,
     wait_for_process_create_event,
 )
-
 
 SAMPLE_SYSMON_XML = """\
 <Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">

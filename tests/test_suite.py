@@ -10,10 +10,34 @@ from detfuzz.models import (
     SysmonEvent,
     TelemetryValidation,
 )
-from detfuzz.suite import run_v0_suite
+from detfuzz.suite import _evaluate_detection, run_v0_suite
 
 
 class SuiteRunnerTests(unittest.TestCase):
+    def test_detection_evaluator_failure_becomes_detection_engine_error(self) -> None:
+        telemetry = TelemetryValidation(
+            valid=True,
+            reason="TELEMETRY_COMPLETE",
+            event=SysmonEvent(
+                event_id=1,
+                provider="Microsoft-Windows-Sysmon",
+                utc_time="2026-07-21T00:00:00Z",
+                computer="host",
+                record_id="1",
+                fields={},
+            ),
+        )
+
+        with patch(
+            "detfuzz.suite.evaluate_detection_rule",
+            side_effect=ValueError("bad operator"),
+        ):
+            result = _evaluate_detection(telemetry)
+
+        self.assertIsNotNone(result)
+        self.assertTrue(result.error)
+        self.assertIn("DETECTION_ENGINE_ERROR:ValueError", result.reason)
+
     def test_run_v0_suite_executes_all_cases_and_finalizes_candidate_bypass(self) -> None:
         def fake_execute(prepared, timeout_seconds=30):
             return ProcessExecution(
@@ -28,10 +52,13 @@ class SuiteRunnerTests(unittest.TestCase):
             )
 
         def fake_marker(prepared, execution):
+            reason = (
+                "MARKER_VALID" if prepared.case.case_id != "NC1" else "MARKER_ABSENT_AS_EXPECTED"
+            )
             return MarkerValidation(
                 valid=prepared.case.case_id != "NC1" or execution.exit_code != 0,
                 exists=prepared.case.case_id != "NC1",
-                reason="MARKER_VALID" if prepared.case.case_id != "NC1" else "MARKER_ABSENT_AS_EXPECTED",
+                reason=reason,
             )
 
         def fake_telemetry(
@@ -66,19 +93,21 @@ class SuiteRunnerTests(unittest.TestCase):
                 reason="RULE_MATCHED" if case_id != "M1" else "RULE_NOT_MATCHED",
             )
 
+        def passing_preflight(powershell_exe):
+            return {"status": "PASS", "reason": "CLOCK_SYNC_OK"}
+
         with tempfile.TemporaryDirectory() as root:
-            with patch("detfuzz.suite.run_clock_preflight", lambda powershell_exe: {"status": "PASS", "reason": "CLOCK_SYNC_OK"}), patch(
-                "detfuzz.suite.expected_executable_sha256", lambda path: "ABC123"
-            ), patch("detfuzz.suite.execute_prepared_case", fake_execute), patch(
-                "detfuzz.suite.validate_marker", fake_marker
-            ), patch("detfuzz.suite._query_telemetry", fake_telemetry), patch(
-                "detfuzz.suite._evaluate_detection", fake_detection
+            with (
+                patch("detfuzz.suite.run_clock_preflight", passing_preflight),
+                patch("detfuzz.suite.expected_executable_sha256", lambda path: "ABC123"),
+                patch("detfuzz.suite.execute_prepared_case", fake_execute),
+                patch("detfuzz.suite.validate_marker", fake_marker),
+                patch("detfuzz.suite._query_telemetry", fake_telemetry),
+                patch("detfuzz.suite._evaluate_detection", fake_detection),
             ):
                 result = run_v0_suite(Path(root), host="DetFuzz-Win11-Lab")
 
-            classifications = {
-                case["case_id"]: case["classification"] for case in result["cases"]
-            }
+            classifications = {case["case_id"]: case["classification"] for case in result["cases"]}
 
             self.assertEqual(result["suite_status"], "COMPLETED")
             self.assertEqual(len(result["cases"]), 8)
@@ -102,32 +131,53 @@ class SuiteRunnerTests(unittest.TestCase):
                 stderr="",
             )
 
-        with tempfile.TemporaryDirectory() as root:
-            with patch("detfuzz.suite.run_clock_preflight", lambda powershell_exe: {"status": "PASS", "reason": "CLOCK_SYNC_OK"}), patch(
-                "detfuzz.suite.expected_executable_sha256", lambda path: "ABC123"
-            ), patch("detfuzz.suite.execute_prepared_case", fake_execute), patch(
-                "detfuzz.suite.validate_marker",
-                lambda prepared, execution: MarkerValidation(True, True, "MARKER_VALID"),
-            ), patch(
-                "detfuzz.suite._query_telemetry",
-                lambda prepared, execution, host, max_events, telemetry_timeout_seconds=30, powershell_path="powershell.exe": TelemetryValidation(
-                    True,
-                    "TELEMETRY_COMPLETE",
-                    SysmonEvent(
-                        1,
-                        "Microsoft-Windows-Sysmon",
-                        "",
-                        host,
-                        "1",
-                        {
-                            "Hashes": "SHA256=ABC123",
-                            "Image": r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe",
-                        },
-                    ),
+        def passing_preflight(powershell_exe):
+            return {"status": "PASS", "reason": "CLOCK_SYNC_OK"}
+
+        def fake_telemetry(
+            prepared,
+            execution,
+            host,
+            max_events,
+            telemetry_timeout_seconds=30,
+            powershell_path="powershell.exe",
+        ):
+            return TelemetryValidation(
+                True,
+                "TELEMETRY_COMPLETE",
+                SysmonEvent(
+                    1,
+                    "Microsoft-Windows-Sysmon",
+                    "",
+                    host,
+                    "1",
+                    {
+                        "Hashes": "SHA256=ABC123",
+                        "Image": (
+                            r"C:\Windows\System32\WindowsPowerShell"
+                            r"\v1.0\powershell.exe"
+                        ),
+                    },
                 ),
-            ), patch(
-                "detfuzz.suite._evaluate_detection",
-                lambda telemetry: DetectionResult("rule", False, "RULE_NOT_MATCHED"),
+            )
+
+        with tempfile.TemporaryDirectory() as root:
+            with (
+                patch("detfuzz.suite.run_clock_preflight", passing_preflight),
+                patch("detfuzz.suite.expected_executable_sha256", lambda path: "ABC123"),
+                patch("detfuzz.suite.execute_prepared_case", fake_execute),
+                patch(
+                    "detfuzz.suite.validate_marker",
+                    lambda prepared, execution: MarkerValidation(True, True, "MARKER_VALID"),
+                ),
+                patch(
+                    "detfuzz.suite._query_telemetry",
+                    fake_telemetry,
+                ),
+                patch(
+                    "detfuzz.suite._evaluate_detection",
+                    lambda telemetry: DetectionResult("rule", False, "RULE_NOT_MATCHED"),
+                ),
             ):
                 result = run_v0_suite(Path(root), host="DetFuzz-Win11-Lab")
 
@@ -142,9 +192,7 @@ class SuiteRunnerTests(unittest.TestCase):
         self.assertEqual(result["abort_reason"], "NEGATIVE_CONTROL_NOT_INVALID")
 
     def test_run_v0_suite_fails_health_when_closing_baseline_is_not_detected(self) -> None:
-        result = self._run_suite_with_detection_overrides(
-            {"B1": False, "__nc1_invalid__": True}
-        )
+        result = self._run_suite_with_detection_overrides({"B1": False, "__nc1_invalid__": True})
 
         self.assertEqual(result["suite_status"], "PIPELINE_HEALTH_FAILED")
         self.assertEqual(result["abort_reason"], "CLOSING_BASELINE_NOT_DETECTED")
@@ -154,11 +202,13 @@ class SuiteRunnerTests(unittest.TestCase):
             raise RuntimeError("boom")
 
         with tempfile.TemporaryDirectory() as root:
-            with patch(
-                "detfuzz.suite.run_clock_preflight",
-                lambda powershell_exe: {"status": "PASS", "reason": "CLOCK_SYNC_OK"},
-            ), patch("detfuzz.suite.expected_executable_sha256", lambda path: "ABC123"), patch(
-                "detfuzz.suite.execute_prepared_case", fail_execute
+            with (
+                patch(
+                    "detfuzz.suite.run_clock_preflight",
+                    lambda powershell_exe: {"status": "PASS", "reason": "CLOCK_SYNC_OK"},
+                ),
+                patch("detfuzz.suite.expected_executable_sha256", lambda path: "ABC123"),
+                patch("detfuzz.suite.execute_prepared_case", fail_execute),
             ):
                 result = run_v0_suite(Path(root), host="DetFuzz-Win11-Lab")
 
@@ -219,22 +269,25 @@ class SuiteRunnerTests(unittest.TestCase):
             )
 
         with tempfile.TemporaryDirectory() as root:
-            with patch(
-                "detfuzz.suite.run_clock_preflight",
-                lambda powershell_exe: {"status": "PASS", "reason": "CLOCK_SYNC_OK"},
-            ), patch("detfuzz.suite.expected_executable_sha256", lambda path: "ABC123"), patch(
-                "detfuzz.suite.execute_prepared_case", fake_execute
-            ), patch(
-                "detfuzz.suite.validate_marker",
-                lambda prepared, execution: MarkerValidation(
-                    True,
-                    prepared.case.case_id != "NC1",
-                    "MARKER_ABSENT_AS_EXPECTED"
-                    if prepared.case.case_id == "NC1"
-                    else "MARKER_VALID",
+            with (
+                patch(
+                    "detfuzz.suite.run_clock_preflight",
+                    lambda powershell_exe: {"status": "PASS", "reason": "CLOCK_SYNC_OK"},
                 ),
-            ), patch("detfuzz.suite._query_telemetry", fake_telemetry), patch(
-                "detfuzz.suite._evaluate_detection", fake_detection
+                patch("detfuzz.suite.expected_executable_sha256", lambda path: "ABC123"),
+                patch("detfuzz.suite.execute_prepared_case", fake_execute),
+                patch(
+                    "detfuzz.suite.validate_marker",
+                    lambda prepared, execution: MarkerValidation(
+                        True,
+                        prepared.case.case_id != "NC1",
+                        "MARKER_ABSENT_AS_EXPECTED"
+                        if prepared.case.case_id == "NC1"
+                        else "MARKER_VALID",
+                    ),
+                ),
+                patch("detfuzz.suite._query_telemetry", fake_telemetry),
+                patch("detfuzz.suite._evaluate_detection", fake_detection),
             ):
                 return run_v0_suite(Path(root), host="DetFuzz-Win11-Lab")
 

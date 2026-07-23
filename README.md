@@ -27,6 +27,7 @@ This repository currently contains the local core:
 - CLI demo using simulated case observations
 - Phase 2 runner preparation for safe PowerShell marker payloads
 - allow-listed v0 command generation
+- structured, registry-backed v0 command mutations
 - Phase 3 marker oracle
 - Phase 3 Sysmon Event ID 1 XML parsing and required-field validation
 - Phase 5 v0 detection rule dependencies and event evaluation
@@ -56,6 +57,10 @@ run. Keep the raw files from `C:\DetFuzz\runs\<suite-id>` and
 `C:\DetFuzz\calibration\<suite-id>` with the portfolio evidence package. See
 `docs/phase-6-evidence-boundary.md`.
 
+The checked-in `evidence/suite-report.md` is an unverified summary snapshot.
+The raw 63-file VM evidence package is intentionally not in this repository, so
+the listed hashes cannot be independently rechecked from a source clone alone.
+
 Blueprint Phase 6 adds the portfolio/demo layer:
 
 - `docs/demo-runbook.md`
@@ -78,24 +83,36 @@ python -m detfuzz.cli calibrate-timeouts --output-root C:\DetFuzz\calibration --
 python -m detfuzz.cli run-suite --output-root C:\DetFuzz\runs --host DetFuzz-Win11-Lab --calibration-result C:\DetFuzz\calibration\<suite-id>\timeout-calibration.json
 python -m detfuzz.cli prepare-benign-fixtures --root C:\DetFuzz\benign
 python -m detfuzz.cli run-benign-fixtures --output-root C:\DetFuzz\benign --host DetFuzz-Win11-Lab
+python -m detfuzz.cli export-contract --output artifacts\detfuzz-suite-report-1.0.schema.json
 ```
 
-For release verification with pySigma installed:
+For release verification with the pinned pySigma and lint toolchain:
 
 ```powershell
-python -m pip install -e .
+python -m pip install -c constraints.txt -e ".[dev]"
+python -m ruff check src tests
+python -m mypy src
 python -m unittest discover -s tests
 ```
 
 Expected installed-dependency result:
 
 ```text
-Ran 60 tests
+Ran 68 tests
 OK (skipped=1)
 ```
 
 One local-only negative test is skipped when pySigma is installed because it
-only verifies the missing-pySigma error path.
+only verifies the missing-pySigma error path. CI runs the installed-dependency
+path on Windows.
+
+## DetFuzz to SignalBudget Contract
+
+DetFuzz owns the canonical versioned JSON Schema at
+`src/detfuzz/contracts/detfuzz-suite-report-1.0.schema.json`. Use
+`export-contract` to copy the packaged schema for a consumer. SignalBudget keeps
+an independent consumer implementation and its cross-project integration test
+checks that a DetFuzz-generated report passes the strict contract.
 
 ## Demo
 

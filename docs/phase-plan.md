@@ -86,3 +86,5 @@
 ## SignalBudget Handoff
 
 - Export a versioned JSON contract for SignalBudget.
+- Current status: canonical 1.0 JSON Schema is packaged and exportable through
+  `detfuzz export-contract`; the cross-project consumer test remains independent.
