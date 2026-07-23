@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import shutil
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
 SUITE_REPORT_SCHEMA_VERSION = "1.0"
@@ -227,10 +227,12 @@ def _is_date_time(value: object) -> bool:
 
 def _is_safe_relative_path(value: str) -> bool:
     normalized = value.replace("\\", "/")
-    path = Path(normalized)
+    posix_path = PurePosixPath(normalized)
+    windows_path = PureWindowsPath(normalized)
     return (
         bool(normalized)
-        and not path.is_absolute()
-        and not path.drive
-        and ".." not in path.parts
+        and not posix_path.is_absolute()
+        and not windows_path.is_absolute()
+        and not windows_path.drive
+        and ".." not in posix_path.parts
     )
