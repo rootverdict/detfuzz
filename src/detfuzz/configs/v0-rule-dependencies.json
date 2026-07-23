@@ -1,0 +1,17 @@
+﻿{
+  "rule_id": "d4f8c4e4-984d-4f5f-9f6c-1cc6b37f2f62",
+  "rule_slug": "detfuzz-v0-powershell-encoded-command",
+  "title": "PowerShell EncodedCommand Process Creation",
+  "dependencies": [
+    {
+      "field": "Image",
+      "operator": "endswith",
+      "value": "\\powershell.exe"
+    },
+    {
+      "field": "CommandLine",
+      "operator": "contains",
+      "value": "-EncodedCommand"
+    }
+  ]
+}

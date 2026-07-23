@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "detfuzz"
+version = "0.1.0"
+description = "Detection rule mutation and resilience testing platform."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "DetFuzz contributors" }]
+dependencies = ["pysigma>=0.11.0"]
+
+[project.scripts]
+detfuzz = "detfuzz.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+detfuzz = ["configs/*.yml", "configs/*.json"]

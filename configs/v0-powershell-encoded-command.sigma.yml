@@ -1,0 +1,16 @@
+﻿title: PowerShell EncodedCommand Process Creation
+id: d4f8c4e4-984d-4f5f-9f6c-1cc6b37f2f62
+detfuzz_slug: detfuzz-v0-powershell-encoded-command
+status: test
+description: Minimal DetFuzz v0 rule for encoded PowerShell process creation.
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection:
+    Image|endswith: '\powershell.exe'
+    CommandLine|contains: '-EncodedCommand'
+  condition: selection
+falsepositives:
+  - Administrative scripts using EncodedCommand
+level: medium
