@@ -38,3 +38,4 @@ python_version = "3.11"
 check_untyped_defs = true
 ignore_missing_imports = true
 warn_unused_ignores = true
+sqlite_cache = false

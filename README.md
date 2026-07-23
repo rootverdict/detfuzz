@@ -17,6 +17,12 @@ The first milestone is intentionally narrow:
 - Machine-readable JSON output
 - Human-readable report
 
+For the current V1/V2 project boundary, see
+[`docs/version-boundary.md`](docs/version-boundary.md). V1 is the
+portfolio-ready release built from the validated v0 suite, v0.1 benign fixtures,
+evidence/reporting flow, and demo materials. V2 ideas are tracked separately so
+the first release does not keep expanding.
+
 ## Current Status
 
 This repository currently contains the local core:

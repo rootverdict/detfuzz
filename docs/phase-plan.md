@@ -1,5 +1,9 @@
 # DetFuzz Build Plan
 
+Use `docs/version-boundary.md` as the release scope guardrail. The phase plan
+describes completed implementation stages; the version boundary decides whether
+new ideas belong in V1 or should wait for V2.
+
 ## Phase 1: Local Core
 
 - Define v0 cases.

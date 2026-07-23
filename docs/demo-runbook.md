@@ -1,6 +1,11 @@
-# DetFuzz Demo Runbook
+# DetFuzz V1 Demo Runbook
 
-This runbook demonstrates DetFuzz v0 in the Windows 11 lab VM.
+This runbook demonstrates the DetFuzz V1 story in the Windows 11 lab VM:
+
+- Run the full v0 encoded-command resilience suite.
+- Run the v0.1 benign false-positive fixtures.
+- Export the JSON Schema contract that downstream consumers such as
+  SignalBudget can validate against.
 
 ## Lab Assumptions
 
@@ -110,7 +115,49 @@ C:\DetFuzz\runs\<suite-id>\reports\suite-report.json
 C:\DetFuzz\runs\<suite-id>\reports\evidence-manifest.json
 ```
 
-## 6. Explain the Finding
+## 6. Run Benign Fixtures
+
+```powershell
+python -m detfuzz.cli run-benign-fixtures `
+  --output-root C:\DetFuzz\benign `
+  --host DetFuzz-Win11-Lab `
+  --max-events 5000
+```
+
+Validated DetFuzz v0.1 benign result:
+
+```text
+BF0: BENIGN_NO_ALERT
+BF1: BENIGN_ALERT
+BF2: BENIGN_ALERT
+```
+
+Inspect:
+
+```text
+C:\DetFuzz\benign\<suite-id>\benign-results.json
+C:\DetFuzz\benign\<suite-id>\reports\suite-report.md
+C:\DetFuzz\benign\<suite-id>\reports\suite-report.json
+C:\DetFuzz\benign\<suite-id>\reports\evidence-manifest.json
+```
+
+## 7. Export the SignalBudget Contract
+
+```powershell
+python -m detfuzz.cli export-contract `
+  --output C:\DetFuzz\detfuzz\artifacts\detfuzz-suite-report-1.0.schema.json
+```
+
+Expected result:
+
+```text
+schema: C:\DetFuzz\detfuzz\artifacts\detfuzz-suite-report-1.0.schema.json
+```
+
+This schema is the V1 handoff contract. DetFuzz owns producing the report and
+schema; SignalBudget owns consuming them.
+
+## 8. Explain the Finding
 
 The key v0 finding is that the brittle demo rule matched standard
 `-EncodedCommand`, but the alias mutation `-enc` produced the same harmless
@@ -118,6 +165,10 @@ marker effect without matching that exact command-line dependency.
 
 That makes `M1` a valid bypass for the intentionally narrow v0 rule, while the
 closing positive control `B1` proves the detector was still working at the end.
+
+The benign fixture result adds the false-positive lens: the same v0 rule also
+alerts on harmless encoded administrative activity, so V1 can discuss both
+resilience and specificity without claiming the benign commands are malicious.
 
 ## Optional Guided Demo Helper
 
