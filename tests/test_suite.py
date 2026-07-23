@@ -1,6 +1,8 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
+from typing import cast
 from unittest.mock import patch
 
 from detfuzz.models import (
@@ -35,8 +37,9 @@ class SuiteRunnerTests(unittest.TestCase):
             result = _evaluate_detection(telemetry)
 
         self.assertIsNotNone(result)
-        self.assertTrue(result.error)
-        self.assertIn("DETECTION_ENGINE_ERROR:ValueError", result.reason)
+        detection = cast(DetectionResult, result)
+        self.assertTrue(detection.error)
+        self.assertIn("DETECTION_ENGINE_ERROR:ValueError", detection.reason)
 
     def test_run_v0_suite_executes_all_cases_and_finalizes_candidate_bypass(self) -> None:
         def fake_execute(prepared, timeout_seconds=30):
@@ -107,16 +110,21 @@ class SuiteRunnerTests(unittest.TestCase):
             ):
                 result = run_v0_suite(Path(root), host="DetFuzz-Win11-Lab")
 
-            classifications = {case["case_id"]: case["classification"] for case in result["cases"]}
+            cases = cast(list[dict[str, object]], result["cases"])
+            classifications = {
+                case["case_id"]: case["classification"]
+                for case in cases
+            }
 
             self.assertEqual(result["suite_status"], "COMPLETED")
-            self.assertEqual(len(result["cases"]), 8)
+            self.assertEqual(len(cases), 8)
             self.assertEqual(classifications["B0"], "DETECTED")
             self.assertEqual(classifications["M1"], "VALID_BYPASS")
             self.assertEqual(classifications["NC1"], "INVALID_MUTANT")
             self.assertEqual(classifications["B1"], "DETECTED")
-            self.assertTrue(Path(result["suite_results"]).exists())
-            self.assertTrue(Path(result["reports"]["json_report"]).exists())
+            self.assertTrue(Path(str(result["suite_results"])).exists())
+            reports = cast(dict[str, str], result["reports"])
+            self.assertTrue(Path(reports["json_report"]).exists())
 
     def test_run_v0_suite_aborts_when_opening_baseline_is_not_detected(self) -> None:
         def fake_execute(prepared, timeout_seconds=30):
@@ -183,7 +191,10 @@ class SuiteRunnerTests(unittest.TestCase):
 
             self.assertEqual(result["suite_status"], "ABORTED")
             self.assertEqual(result["abort_reason"], "OPENING_BASELINE_NOT_DETECTED")
-            self.assertEqual(len(result["cases"]), 1)
+            self.assertEqual(
+                len(cast(list[dict[str, object]], result["cases"])),
+                1,
+            )
 
     def test_run_v0_suite_fails_health_when_negative_control_is_not_invalid(self) -> None:
         result = self._run_suite_with_detection_overrides({})
@@ -213,13 +224,90 @@ class SuiteRunnerTests(unittest.TestCase):
                 result = run_v0_suite(Path(root), host="DetFuzz-Win11-Lab")
 
             self.assertEqual(result["suite_status"], "ABORTED")
-            self.assertIn("UNEXPECTED_ERROR:RuntimeError:boom", result["abort_reason"])
-            self.assertTrue(Path(result["suite_results"]).exists())
-            self.assertTrue(Path(result["reports"]["json_report"]).exists())
+            self.assertIn(
+                "UNEXPECTED_ERROR:RuntimeError:boom",
+                str(result["abort_reason"]),
+            )
+            self.assertTrue(Path(str(result["suite_results"])).exists())
+            reports = cast(dict[str, str], result["reports"])
+            self.assertTrue(Path(reports["json_report"]).exists())
+
+    def test_run_v0_suite_reports_preflight_exception(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            with patch(
+                "detfuzz.suite.run_clock_preflight",
+                side_effect=FileNotFoundError("powershell missing"),
+            ):
+                result = run_v0_suite(Path(root), host="DetFuzz-Win11-Lab")
+
+            self.assertEqual(result["suite_status"], "PREFLIGHT_FAILED")
+            self.assertIn(
+                "PREFLIGHT_ERROR:FileNotFoundError",
+                str(result["abort_reason"]),
+            )
+            self.assertTrue(Path(str(result["suite_results"])).exists())
+
+    def test_finalized_classification_is_rewritten_to_case_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            result = self._run_suite_with_detection_overrides(
+                {"M1": False, "__nc1_invalid__": True},
+                output_root=Path(root),
+            )
+            suite_path = Path(str(result["suite_path"]))
+            evidence_record = json.loads(
+                (suite_path / "evidence" / "M1" / "case-record.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+        self.assertEqual(evidence_record["classification"], "VALID_BYPASS")
+        self.assertEqual(
+            evidence_record["preliminary_classification"],
+            "CANDIDATE_VALID_BYPASS",
+        )
+
+    def test_missing_telemetry_is_not_misclassified_as_invalid_mutant(self) -> None:
+        from detfuzz.classifier import classify_case
+        from detfuzz.identity import validate_executable_identity
+        from detfuzz.models import CaseKind, CaseSpec, PreparedCase
+        from detfuzz.suite import _build_observation
+
+        prepared = PreparedCase(
+            case=CaseSpec("M1", CaseKind.MUTATION, "test", True),
+            suite_id="suite",
+            case_path=Path("."),
+            marker_path=Path("effect.json"),
+            nonce="nonce",
+            encoded_payload="payload",
+            command_line="command",
+        )
+        execution = ProcessExecution(
+            case_id="M1",
+            command_line="command",
+            pid=1234,
+            started_at_utc="2026-07-21T00:00:00+00:00",
+            ended_at_utc="2026-07-21T00:00:01+00:00",
+            exit_code=0,
+            stdout="",
+            stderr="",
+        )
+        telemetry = TelemetryValidation(False, "TELEMETRY_TIMEOUT", None)
+        identity = validate_executable_identity(telemetry, "A" * 64)
+        observation = _build_observation(
+            prepared,
+            execution,
+            MarkerValidation(True, True, "MARKER_VALID"),
+            telemetry,
+            identity,
+            None,
+        )
+
+        self.assertEqual(classify_case(observation).value, "TELEMETRY_FAILURE")
 
     def _run_suite_with_detection_overrides(
         self,
         overrides: dict[str, bool],
+        output_root: Path | None = None,
     ) -> dict[str, object]:
         def fake_execute(prepared, timeout_seconds=30):
             return ProcessExecution(
@@ -268,7 +356,7 @@ class SuiteRunnerTests(unittest.TestCase):
                 reason="RULE_MATCHED" if matched else "RULE_NOT_MATCHED",
             )
 
-        with tempfile.TemporaryDirectory() as root:
+        def run(root: Path) -> dict[str, object]:
             with (
                 patch(
                     "detfuzz.suite.run_clock_preflight",
@@ -289,7 +377,12 @@ class SuiteRunnerTests(unittest.TestCase):
                 patch("detfuzz.suite._query_telemetry", fake_telemetry),
                 patch("detfuzz.suite._evaluate_detection", fake_detection),
             ):
-                return run_v0_suite(Path(root), host="DetFuzz-Win11-Lab")
+                return run_v0_suite(root, host="DetFuzz-Win11-Lab")
+
+        if output_root is not None:
+            return run(output_root)
+        with tempfile.TemporaryDirectory() as root:
+            return run(Path(root))
 
 
 if __name__ == "__main__":

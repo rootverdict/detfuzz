@@ -79,10 +79,10 @@ python -m detfuzz.cli validate-telemetry --host DetFuzz-Win11-Lab --pid 3356 --s
 python -m detfuzz.cli evaluate-detection --xml artifacts/sample-sysmon-event.xml
 python -m detfuzz.cli build-report --suite-results artifacts/suite-results.json --evidence-root artifacts/evidence --output-dir artifacts/reports
 python -m detfuzz.cli clock-preflight
-python -m detfuzz.cli calibrate-timeouts --output-root C:\DetFuzz\calibration --host DetFuzz-Win11-Lab --runs 20
+python -m detfuzz.cli calibrate-timeouts --output-root C:\DetFuzz\calibration --host DetFuzz-Win11-Lab --runs 20 --telemetry-probe-timeout-seconds 120
 python -m detfuzz.cli run-suite --output-root C:\DetFuzz\runs --host DetFuzz-Win11-Lab --calibration-result C:\DetFuzz\calibration\<suite-id>\timeout-calibration.json
 python -m detfuzz.cli prepare-benign-fixtures --root C:\DetFuzz\benign
-python -m detfuzz.cli run-benign-fixtures --output-root C:\DetFuzz\benign --host DetFuzz-Win11-Lab
+python -m detfuzz.cli run-benign-fixtures --output-root C:\DetFuzz\benign --host DetFuzz-Win11-Lab --telemetry-timeout-seconds 30
 python -m detfuzz.cli export-contract --output artifacts\detfuzz-suite-report-1.0.schema.json
 ```
 
@@ -91,20 +91,24 @@ For release verification with the pinned pySigma and lint toolchain:
 ```powershell
 python -m pip install -c constraints.txt -e ".[dev]"
 python -m ruff check src tests
-python -m mypy src
+python -m mypy src tests
 python -m unittest discover -s tests
 ```
 
 Expected installed-dependency result:
 
 ```text
-Ran 68 tests
+Ran 81 tests
 OK (skipped=1)
 ```
 
 One local-only negative test is skipped when pySigma is installed because it
 only verifies the missing-pySigma error path. CI runs the installed-dependency
 path on Windows.
+
+Commands that produce health statuses exit nonzero when preflight, calibration,
+suite, benign-fixture, or telemetry validation fails. Their JSON output is still
+written to stdout for automation and diagnosis.
 
 ## DetFuzz to SignalBudget Contract
 

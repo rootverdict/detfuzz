@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from typing import cast
 from unittest.mock import patch
 
 from detfuzz.benign import (
@@ -58,7 +59,14 @@ class BenignFixtureTests(unittest.TestCase):
                 stderr="",
             )
 
-        def fake_telemetry(prepared, execution, host, max_events, powershell_path):
+        def fake_telemetry(
+            prepared,
+            execution,
+            host,
+            max_events,
+            powershell_path,
+            telemetry_timeout_seconds,
+        ):
             return TelemetryValidation(
                 valid=True,
                 reason="TELEMETRY_COMPLETE",
@@ -97,17 +105,55 @@ class BenignFixtureTests(unittest.TestCase):
                     host="DetFuzz-Win11-Lab",
                 )
 
+            fixtures = cast(list[dict[str, object]], result["fixtures"])
             classifications = {
                 fixture["case_id"]: fixture["classification"]
-                for fixture in result["fixtures"]
+                for fixture in fixtures
             }
 
             self.assertEqual(result["suite_status"], "COMPLETED")
             self.assertEqual(classifications["BF0"], "BENIGN_NO_ALERT")
             self.assertEqual(classifications["BF1"], "BENIGN_ALERT")
             self.assertEqual(classifications["BF2"], "BENIGN_ALERT")
-            self.assertTrue(Path(result["benign_results"]).exists())
-            self.assertTrue(Path(result["reports"]["json_report"]).exists())
+            self.assertTrue(Path(str(result["benign_results"])).exists())
+            reports = cast(dict[str, str], result["reports"])
+            self.assertTrue(Path(reports["json_report"]).exists())
+
+    def test_run_benign_fixtures_reports_pipeline_health_failure(self) -> None:
+        def fake_execute(prepared, timeout_seconds=30):
+            return ProcessExecution(
+                case_id=prepared.fixture.fixture_id,
+                command_line=prepared.command_line,
+                pid=2000,
+                started_at_utc="2026-07-21T00:00:00+00:00",
+                ended_at_utc="2026-07-21T00:00:01+00:00",
+                exit_code=0,
+                stdout="",
+                stderr="",
+            )
+
+        def missing_telemetry(
+            prepared,
+            execution,
+            host,
+            max_events,
+            powershell_path,
+            telemetry_timeout_seconds,
+        ):
+            return TelemetryValidation(False, "TELEMETRY_TIMEOUT", None)
+
+        with tempfile.TemporaryDirectory() as root:
+            with (
+                patch("detfuzz.benign.execute_benign_fixture", fake_execute),
+                patch("detfuzz.benign._query_fixture_telemetry", missing_telemetry),
+            ):
+                result = run_benign_fixtures(
+                    Path(root),
+                    host="DetFuzz-Win11-Lab",
+                )
+
+        self.assertEqual(result["suite_status"], "PIPELINE_HEALTH_FAILED")
+        self.assertIn("BENIGN_TELEMETRY_FAILURE", str(result["abort_reason"]))
 
 
 if __name__ == "__main__":

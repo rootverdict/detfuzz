@@ -89,7 +89,7 @@ class TelemetryTests(unittest.TestCase):
         self.assertTrue(result.valid)
         self.assertEqual(result.reason, "TELEMETRY_COMPLETE")
 
-    def test_event_matches_process_checks_host_pid_image_command_hash_and_time(self) -> None:
+    def test_event_matches_process_checks_host_pid_image_command_and_time(self) -> None:
         event = parse_sysmon_event_xml(SAMPLE_SYSMON_XML)
         criteria = ProcessCorrelationCriteria(
             host="DetFuzz-Win11-Lab",
@@ -112,6 +112,37 @@ class TelemetryTests(unittest.TestCase):
         )
 
         self.assertFalse(event_matches_process(event, criteria))
+
+    def test_correlated_event_reports_missing_required_hash_algorithm(self) -> None:
+        event_without_sha256 = SAMPLE_SYSMON_XML.replace(
+            "SHA256=abc123",
+            "MD5=abc123",
+        )
+
+        def fake_runner(*args, **kwargs):
+            return subprocess.CompletedProcess(
+                args=args,
+                returncode=0,
+                stdout=event_without_sha256,
+                stderr="",
+            )
+
+        criteria = ProcessCorrelationCriteria(
+            host="DetFuzz-Win11-Lab",
+            pid=4242,
+            started_at_utc="2026-07-20T18:08:46+00:00",
+            ended_at_utc="2026-07-20T18:08:48+00:00",
+            command_fragment="-EncodedCommand",
+        )
+
+        result = query_and_correlate_process_create(
+            criteria,
+            command_runner=fake_runner,
+        )
+
+        self.assertFalse(result.valid)
+        self.assertIsNotNone(result.event)
+        self.assertEqual(result.reason, "REQUIRED_HASH_ALGORITHM_MISSING")
 
     def test_correlate_process_create_fails_when_pid_does_not_match(self) -> None:
         event = parse_sysmon_event_xml(SAMPLE_SYSMON_XML)

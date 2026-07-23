@@ -2,6 +2,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from typing import cast
 from unittest.mock import patch
 
 from detfuzz.calibration import calibrate_timeouts, run_clock_preflight
@@ -63,8 +64,18 @@ class CalibrationTests(unittest.TestCase):
         self.assertEqual(result["status"], "PREFLIGHT_FAILED")
         self.assertEqual(result["reason"], "CLOCK_UNSYNCED")
 
+    def test_clock_preflight_reports_missing_powershell(self) -> None:
+        def missing_runner(*args, **kwargs):
+            raise FileNotFoundError("powershell missing")
+
+        result = run_clock_preflight(command_runner=missing_runner)
+
+        self.assertEqual(result["status"], "PREFLIGHT_FAILED")
+        self.assertIn("CLOCK_QUERY_ERROR:FileNotFoundError", str(result["reason"]))
+
     def test_calibrate_timeouts_writes_output_and_selects_timeout(self) -> None:
         calls = {"count": 0}
+        telemetry_timeouts = []
 
         def fake_execute(prepared, timeout_seconds=30):
             calls["count"] += 1
@@ -86,6 +97,7 @@ class CalibrationTests(unittest.TestCase):
             max_events,
             telemetry_timeout_seconds,
         ):
+            telemetry_timeouts.append(telemetry_timeout_seconds)
             return TelemetryValidation(
                 True,
                 "TELEMETRY_COMPLETE",
@@ -115,8 +127,10 @@ class CalibrationTests(unittest.TestCase):
 
             self.assertEqual(result["status"], "PASS")
             self.assertEqual(result["runs_completed"], 2)
-            self.assertEqual(result["selected_timeouts_seconds"]["process"], 30)
-            self.assertTrue(Path(result["output_path"]).exists())
+            selected = cast(dict[str, int], result["selected_timeouts_seconds"])
+            self.assertEqual(selected["process"], 30)
+            self.assertEqual(telemetry_timeouts, [120, 120])
+            self.assertTrue(Path(str(result["output_path"])).exists())
 
     def test_calibrate_timeouts_fails_when_telemetry_is_missing(self) -> None:
         def fake_execute(prepared, timeout_seconds=30):

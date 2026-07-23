@@ -35,6 +35,7 @@ python -m detfuzz.cli calibrate-timeouts `
   --output-root C:\DetFuzz\calibration `
   --host DetFuzz-Win11-Lab `
   --runs 20 `
+  --telemetry-probe-timeout-seconds 120 `
   --max-events 5000
 ```
 

@@ -41,6 +41,13 @@ def run_v0_suite(
     max_events: int = 5000,
     calibration_result_path: Path | None = None,
 ) -> dict[str, object]:
+    if timeout_seconds <= 0:
+        raise ValueError("timeout_seconds must be positive")
+    if telemetry_timeout_seconds <= 0:
+        raise ValueError("telemetry_timeout_seconds must be positive")
+    if max_events <= 0:
+        raise ValueError("max_events must be positive")
+
     calibration = _load_calibration_result(calibration_result_path)
     if calibration is not None:
         timeout_seconds = int(calibration["selected_timeouts_seconds"]["process"])
@@ -50,6 +57,10 @@ def run_v0_suite(
                 calibration["selected_timeouts_seconds"].get("telemetry"),
             )
         )
+        if timeout_seconds <= 0:
+            raise ValueError("calibration process timeout must be positive")
+        if telemetry_timeout_seconds <= 0:
+            raise ValueError("calibration telemetry timeout must be positive")
     suite = create_suite(output_root)
     evidence_root = suite.suite_path / "evidence"
     evidence_root.mkdir()
@@ -58,8 +69,15 @@ def run_v0_suite(
     preliminary: dict[str, Classification] = {}
     suite_status = "COMPLETED"
     abort_reason: str | None = None
-    preflight = run_clock_preflight(powershell_exe=powershell_path)
-    expected_hash = expected_executable_sha256(powershell_path)
+    expected_hash: str | None = None
+    try:
+        preflight = run_clock_preflight(powershell_exe=powershell_path)
+        expected_hash = expected_executable_sha256(powershell_path)
+    except Exception as error:  # noqa: BLE001 - preflight must remain reportable.
+        preflight = {
+            "status": "PREFLIGHT_FAILED",
+            "reason": f"PREFLIGHT_ERROR:{type(error).__name__}:{error}",
+        }
 
     if preflight["status"] != "PASS":
         suite_status = "PREFLIGHT_FAILED"
@@ -128,6 +146,7 @@ def run_v0_suite(
         _finalize_case_record(record, closing)
         for record in case_records
     ]
+    _rewrite_finalized_case_records(evidence_root, finalized_cases)
     if suite_status == "COMPLETED":
         suite_status, abort_reason = _suite_health(finalized_cases)
 
@@ -321,6 +340,17 @@ def _write_case_evidence(
         shutil.copy2(prepared.marker_path, case_dir / "effect.json")
 
 
+def _rewrite_finalized_case_records(
+    evidence_root: Path,
+    finalized_cases: list[dict[str, object]],
+) -> None:
+    for record in finalized_cases:
+        case_id = str(record["case_id"])
+        case_record_path = evidence_root / case_id / "case-record.json"
+        if case_record_path.exists():
+            _write_json(case_record_path, record)
+
+
 def _write_json(path: Path, payload: object) -> None:
     path.write_text(json.dumps(payload, indent=2, sort_keys=True, default=str), encoding="utf-8")
 
@@ -353,4 +383,19 @@ def _load_calibration_result(path: Path | None) -> dict[str, Any] | None:
         raise ValueError("calibration result missing process timeout")
     if "telemetry_query" not in selected and "telemetry" not in selected:
         raise ValueError("calibration result missing telemetry timeout")
+    for field in ("process",):
+        value = selected[field]
+        if (
+            not isinstance(value, int)
+            or isinstance(value, bool)
+            or value <= 0
+        ):
+            raise ValueError(f"calibration {field} timeout must be positive")
+    telemetry_value = selected.get("telemetry_query", selected.get("telemetry"))
+    if (
+        not isinstance(telemetry_value, int)
+        or isinstance(telemetry_value, bool)
+        or telemetry_value <= 0
+    ):
+        raise ValueError("calibration telemetry timeout must be positive")
     return payload

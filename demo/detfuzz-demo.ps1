@@ -12,6 +12,14 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+function Assert-NativeSuccess {
+    param([string]$Operation)
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "$Operation failed with exit code $LASTEXITCODE."
+    }
+}
+
 Set-Location -LiteralPath $ProjectRoot
 $env:PYTHONPATH = "src"
 
@@ -22,6 +30,7 @@ Get-Service Sysmon64 | Select-Object Status, Name, DisplayName
 Write-Host ""
 Write-Host "== Clock preflight =="
 python -m detfuzz.cli clock-preflight
+Assert-NativeSuccess "Clock preflight"
 
 if (-not $SkipCalibration) {
     Write-Host ""
@@ -31,8 +40,12 @@ if (-not $SkipCalibration) {
         --host $HostName `
         --runs $CalibrationRuns `
         --max-events $MaxEvents
+    Assert-NativeSuccess "Timeout calibration"
     $calibrationOutput
     $calibration = $calibrationOutput | ConvertFrom-Json
+    if ($calibration.status -ne "PASS") {
+        throw "Timeout calibration reported status $($calibration.status)."
+    }
     $CalibrationResult = $calibration.output_path
 }
 
@@ -49,6 +62,7 @@ if ($RunSuite) {
         $suiteArgs += @("--calibration-result", $CalibrationResult)
     }
     python @suiteArgs
+    Assert-NativeSuccess "DetFuzz suite"
 } else {
     Write-Host ""
     Write-Host "Full suite not run. Re-run with -RunSuite when ready."

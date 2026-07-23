@@ -110,6 +110,8 @@ def validate_telemetry(args: argparse.Namespace) -> None:
         max_events=args.max_events,
     )
     print(json.dumps(asdict(result), indent=2, sort_keys=True, default=str))
+    if not result.valid:
+        raise SystemExit(1)
 
 
 def evaluate_detection(args: argparse.Namespace) -> None:
@@ -135,11 +137,15 @@ def run_suite(args: argparse.Namespace) -> None:
         calibration_result_path=args.calibration_result,
     )
     print(json.dumps(result, indent=2, sort_keys=True, default=str))
+    if result["suite_status"] != "COMPLETED":
+        raise SystemExit(1)
 
 
 def clock_preflight(args: argparse.Namespace) -> None:
     result = run_clock_preflight(powershell_exe=args.powershell_path)
     print(json.dumps(result, indent=2, sort_keys=True, default=str))
+    if result["status"] != "PASS":
+        raise SystemExit(1)
 
 
 def calibrate(args: argparse.Namespace) -> None:
@@ -149,9 +155,12 @@ def calibrate(args: argparse.Namespace) -> None:
         runs=args.runs,
         powershell_path=args.powershell_path,
         process_timeout_seconds=args.process_timeout_seconds,
+        telemetry_probe_timeout_seconds=args.telemetry_probe_timeout_seconds,
         max_events=args.max_events,
     )
     print(json.dumps(result, indent=2, sort_keys=True, default=str))
+    if result["status"] != "PASS":
+        raise SystemExit(1)
 
 
 def run_benign(args: argparse.Namespace) -> None:
@@ -160,9 +169,12 @@ def run_benign(args: argparse.Namespace) -> None:
         host=args.host,
         powershell_path=args.powershell_path,
         timeout_seconds=args.timeout_seconds,
+        telemetry_timeout_seconds=args.telemetry_timeout_seconds,
         max_events=args.max_events,
     )
     print(json.dumps(result, indent=2, sort_keys=True, default=str))
+    if result["suite_status"] != "COMPLETED":
+        raise SystemExit(1)
 
 
 def export_contract(args: argparse.Namespace) -> None:
@@ -372,6 +384,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Per-process timeout during calibration.",
     )
     calibration.add_argument(
+        "--telemetry-probe-timeout-seconds",
+        type=int,
+        default=120,
+        help="Maximum telemetry wait used to discover a stable timeout.",
+    )
+    calibration.add_argument(
         "--max-events",
         type=int,
         default=5000,
@@ -399,6 +417,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=30,
         help="Per-fixture process timeout.",
+    )
+    benign.add_argument(
+        "--telemetry-timeout-seconds",
+        type=int,
+        default=30,
+        help="Maximum time to poll for each benign fixture's Sysmon event.",
     )
     benign.add_argument(
         "--max-events",

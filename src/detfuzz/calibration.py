@@ -26,19 +26,30 @@ def run_clock_preflight(
     powershell_exe: str = "powershell.exe",
     command_runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
 ) -> dict[str, object]:
-    runner_utc = datetime.now(UTC)
-    completed = command_runner(
-        [
-            powershell_exe,
-            "-NoProfile",
-            "-NonInteractive",
-            "-Command",
-            "(Get-Date).ToUniversalTime().ToString('o')",
-        ],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    runner_started_utc = datetime.now(UTC)
+    try:
+        completed = command_runner(
+            [
+                powershell_exe,
+                "-NoProfile",
+                "-NonInteractive",
+                "-Command",
+                "(Get-Date).ToUniversalTime().ToString('o')",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError as error:
+        return {
+            "status": "PREFLIGHT_FAILED",
+            "reason": f"CLOCK_QUERY_ERROR:{type(error).__name__}:{error}",
+            "runner_utc": runner_started_utc.isoformat(),
+            "target_utc": None,
+            "offset_ms": None,
+        }
+    runner_ended_utc = datetime.now(UTC)
+    runner_utc = runner_started_utc + (runner_ended_utc - runner_started_utc) / 2
 
     if completed.returncode != 0:
         return {
@@ -49,7 +60,16 @@ def run_clock_preflight(
             "offset_ms": None,
         }
 
-    sync_status = _query_time_sync_status(powershell_exe, command_runner)
+    try:
+        sync_status = _query_time_sync_status(powershell_exe, command_runner)
+    except OSError as error:
+        return {
+            "status": "PREFLIGHT_FAILED",
+            "reason": f"TIME_SYNC_QUERY_ERROR:{type(error).__name__}:{error}",
+            "runner_utc": runner_utc.isoformat(),
+            "target_utc": completed.stdout.strip() or None,
+            "offset_ms": None,
+        }
     if not sync_status["synchronized"]:
         return {
             "status": "PREFLIGHT_FAILED",
@@ -92,10 +112,17 @@ def calibrate_timeouts(
     runs: int = 20,
     powershell_path: str = "powershell.exe",
     process_timeout_seconds: int = 30,
+    telemetry_probe_timeout_seconds: int = MAXIMUM_STABLE_TIMEOUT_SECONDS,
     max_events: int = 5000,
 ) -> dict[str, object]:
     if runs <= 0:
         raise ValueError("runs must be positive")
+    if process_timeout_seconds <= 0:
+        raise ValueError("process_timeout_seconds must be positive")
+    if telemetry_probe_timeout_seconds <= 0:
+        raise ValueError("telemetry_probe_timeout_seconds must be positive")
+    if max_events <= 0:
+        raise ValueError("max_events must be positive")
 
     suite = create_suite(output_root)
     baseline = next(case for case in V0_CASES if case.case_id == "B0")
@@ -116,7 +143,7 @@ def calibrate_timeouts(
             execution=execution,
             host=host,
             max_events=max_events,
-            telemetry_timeout_seconds=process_timeout_seconds,
+            telemetry_timeout_seconds=telemetry_probe_timeout_seconds,
         )
         telemetry_query_ended = datetime.now(UTC)
         detection_matched = _calibration_detection_matched(telemetry)
@@ -180,6 +207,7 @@ def calibrate_timeouts(
         "reason": "CALIBRATION_HEALTHY" if stable else "CALIBRATION_HEALTH_CHECK_FAILED",
         "selection_method": "max(30s, observed_max + 10s)",
         "maximum_stable_timeout_seconds": MAXIMUM_STABLE_TIMEOUT_SECONDS,
+        "telemetry_probe_timeout_seconds": telemetry_probe_timeout_seconds,
         "process_duration_ms": _summary(process_values),
         "telemetry_latency_ms": _summary(telemetry_values),
         "telemetry_query_duration_ms": _summary(query_values),

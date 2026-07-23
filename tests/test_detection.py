@@ -35,6 +35,20 @@ SAMPLE_EVENT = """\
 
 
 class DetectionTests(unittest.TestCase):
+    def test_repository_config_mirrors_match_packaged_configs(self) -> None:
+        repository_root = Path(__file__).resolve().parents[1]
+        for name in (
+            "v0-powershell-encoded-command.sigma.yml",
+            "v0-rule-dependencies.json",
+        ):
+            repository_copy = repository_root / "configs" / name
+            packaged_copy = repository_root / "src" / "detfuzz" / "configs" / name
+            self.assertEqual(
+                repository_copy.read_bytes(),
+                packaged_copy.read_bytes(),
+                f"{name} must be updated in both config locations",
+            )
+
     def test_v0_rule_matches_encoded_command_event(self) -> None:
         event = parse_sysmon_event_xml(SAMPLE_EVENT)
 

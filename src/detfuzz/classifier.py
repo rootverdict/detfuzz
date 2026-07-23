@@ -14,14 +14,14 @@ def classify_case(observation: CaseObservation) -> Classification:
     if not observation.marker_valid:
         return Classification.INVALID_MUTANT
 
-    if not observation.executable_identity_valid:
-        return Classification.INVALID_MUTANT
-
     if not observation.telemetry_received:
         return Classification.TELEMETRY_FAILURE
 
     if not observation.required_fields_present:
         return Classification.TELEMETRY_INCOMPLETE
+
+    if not observation.executable_identity_valid:
+        return Classification.INVALID_MUTANT
 
     if observation.detection_engine_error:
         return Classification.DETECTION_ENGINE_ERROR

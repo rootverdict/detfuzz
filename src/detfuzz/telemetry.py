@@ -117,7 +117,7 @@ def correlate_process_create_event(
     if not candidates:
         return TelemetryValidation(False, "NO_MATCHING_PROCESS_CREATE_EVENT")
 
-    return validate_process_create_event(candidates[0])
+    return _validate_correlated_process_event(candidates[0], criteria)
 
 
 def event_matches_process(
@@ -144,11 +144,6 @@ def event_matches_process(
     ).lower():
         return False
 
-    if criteria.required_hash_algorithm:
-        expected_prefix = criteria.required_hash_algorithm.upper() + "="
-        if expected_prefix not in event.fields.get("Hashes", "").upper():
-            return False
-
     return _event_inside_window(
         event,
         criteria.started_at_utc,
@@ -162,11 +157,14 @@ def query_sysmon_process_create_xml(
     max_events: int = 200,
     command_runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
 ) -> str:
+    if max_events <= 0:
+        raise ValueError("max_events must be positive")
+
     script = (
         "$ErrorActionPreference = 'Stop'; "
-        "Get-WinEvent -LogName 'Microsoft-Windows-Sysmon/Operational' "
+        "Get-WinEvent -FilterHashtable "
+        "@{LogName='Microsoft-Windows-Sysmon/Operational'; Id=1} "
         f"-MaxEvents {max_events} | "
-        "Where-Object { $_.Id -eq 1 } | "
         "ForEach-Object { $_.ToXml() }"
     )
     completed = command_runner(
@@ -201,7 +199,28 @@ def query_and_correlate_process_create(
     candidates = [event for event in events if event_matches_process(event, criteria)]
     if not candidates:
         return TelemetryValidation(False, "NO_MATCHING_PROCESS_CREATE_EVENT")
-    return validate_process_create_event(candidates[0])
+    return _validate_correlated_process_event(candidates[0], criteria)
+
+
+def _validate_correlated_process_event(
+    event: SysmonEvent,
+    criteria: ProcessCorrelationCriteria,
+) -> TelemetryValidation:
+    validation = validate_process_create_event(event)
+    if not validation.valid:
+        return validation
+
+    if criteria.required_hash_algorithm:
+        expected_prefix = criteria.required_hash_algorithm.upper() + "="
+        hashes = event.fields.get("Hashes", "").upper()
+        if expected_prefix not in hashes:
+            return TelemetryValidation(
+                False,
+                "REQUIRED_HASH_ALGORITHM_MISSING",
+                event,
+                (f"Hashes:{criteria.required_hash_algorithm.upper()}",),
+            )
+    return validation
 
 
 def wait_for_process_create_event(
@@ -214,6 +233,11 @@ def wait_for_process_create_event(
     sleeper: Callable[[float], None] = time.sleep,
     monotonic: Callable[[], float] = time.monotonic,
 ) -> TelemetryValidation:
+    if timeout_seconds <= 0:
+        raise ValueError("timeout_seconds must be positive")
+    if poll_interval_seconds < 0:
+        raise ValueError("poll_interval_seconds must not be negative")
+
     deadline = monotonic() + timeout_seconds
     last_result = TelemetryValidation(False, "TELEMETRY_POLL_NOT_STARTED")
 

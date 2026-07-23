@@ -16,7 +16,7 @@ from detfuzz.models import (
 from detfuzz.payloads import encode_powershell_command
 from detfuzz.report import write_report_bundle
 from detfuzz.runner import create_suite, quote_windows_arg, utc_now_iso
-from detfuzz.telemetry import query_and_correlate_process_create
+from detfuzz.telemetry import wait_for_process_create_event
 
 
 @dataclass(frozen=True)
@@ -151,8 +151,16 @@ def run_benign_fixtures(
     host: str,
     powershell_path: str = "powershell.exe",
     timeout_seconds: int = 30,
+    telemetry_timeout_seconds: int = 30,
     max_events: int = 5000,
 ) -> dict[str, object]:
+    if timeout_seconds <= 0:
+        raise ValueError("timeout_seconds must be positive")
+    if telemetry_timeout_seconds <= 0:
+        raise ValueError("telemetry_timeout_seconds must be positive")
+    if max_events <= 0:
+        raise ValueError("max_events must be positive")
+
     suite = create_suite(output_root)
     evidence_root = suite.suite_path / "evidence"
     evidence_root.mkdir()
@@ -172,17 +180,19 @@ def run_benign_fixtures(
             host=host,
             max_events=max_events,
             powershell_path=powershell_path,
+            telemetry_timeout_seconds=telemetry_timeout_seconds,
         )
         detection = _evaluate_fixture_detection(telemetry)
         record = _fixture_record(prepared, execution, telemetry, detection)
         fixture_records.append(record)
         _write_fixture_evidence(evidence_root, record, execution, telemetry, detection)
 
+    suite_status, abort_reason = _benign_suite_health(fixture_records)
     results = {
         "schema_version": "1.0",
         "suite_id": suite.suite_id,
-        "suite_status": "COMPLETED",
-        "abort_reason": None,
+        "suite_status": suite_status,
+        "abort_reason": abort_reason,
         "environment": {
             "host": host,
             "telemetry": "Microsoft-Windows-Sysmon/Operational",
@@ -211,7 +221,8 @@ def run_benign_fixtures(
     return {
         "suite_id": suite.suite_id,
         "suite_path": str(suite.suite_path),
-        "suite_status": "COMPLETED",
+        "suite_status": suite_status,
+        "abort_reason": abort_reason,
         "benign_results": str(results_path),
         "reports": {name: str(path) for name, path in report_paths.items()},
         "fixtures": fixture_records,
@@ -224,6 +235,7 @@ def _query_fixture_telemetry(
     host: str,
     max_events: int,
     powershell_path: str,
+    telemetry_timeout_seconds: int,
 ) -> TelemetryValidation:
     if execution.pid is None:
         return TelemetryValidation(False, "EXECUTION_PID_MISSING")
@@ -236,10 +248,11 @@ def _query_fixture_telemetry(
         command_fragment=prepared.command_fragment,
     )
     try:
-        return query_and_correlate_process_create(
+        return wait_for_process_create_event(
             criteria,
             powershell_exe=powershell_path,
             max_events=max_events,
+            timeout_seconds=telemetry_timeout_seconds,
         )
     except RuntimeError:
         return TelemetryValidation(False, "TELEMETRY_QUERY_FAILED")
@@ -300,6 +313,34 @@ def _classify_benign_fixture(
     if detection.matched:
         return "BENIGN_ALERT"
     return "BENIGN_NO_ALERT"
+
+
+def _benign_suite_health(
+    fixture_records: list[dict[str, object]],
+) -> tuple[str, str | None]:
+    unhealthy = {
+        "BENIGN_EXECUTION_TIMEOUT",
+        "BENIGN_EXECUTION_FAILED",
+        "BENIGN_TELEMETRY_FAILURE",
+        "BENIGN_DETECTION_NOT_EVALUATED",
+    }
+    for record in fixture_records:
+        classification = str(record["classification"])
+        if classification in unhealthy:
+            return (
+                "PIPELINE_HEALTH_FAILED",
+                f"{record['case_id']}:{classification}",
+            )
+
+    mismatches = [
+        str(record["case_id"])
+        for record in fixture_records
+        if record.get("prediction_met") is False
+    ]
+    if mismatches:
+        return "PREDICTION_MISMATCH", "PREDICTION_MISMATCH:" + ",".join(mismatches)
+
+    return "COMPLETED", None
 
 
 def _write_fixture_evidence(

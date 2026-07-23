@@ -28,6 +28,7 @@ $env:PYTHONPATH='src'
 python -m detfuzz.cli run-benign-fixtures `
   --output-root C:\DetFuzz\benign `
   --host DetFuzz-Win11-Lab `
+  --telemetry-timeout-seconds 30 `
   --max-events 5000
 ```
 

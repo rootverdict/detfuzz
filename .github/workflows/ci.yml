@@ -21,7 +21,7 @@ jobs:
       - name: Lint
         run: python -m ruff check src tests
       - name: Type-check
-        run: python -m mypy src
+        run: python -m mypy src tests
       - name: Test
         run: python -m unittest discover -s tests -v
       - name: Smoke-test CLI and packaged contract
