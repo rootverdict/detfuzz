@@ -82,7 +82,7 @@ python -m unittest discover -s tests
 python -m detfuzz.cli simulate-report
 python -m detfuzz.cli prepare-suite --root artifacts/runs
 python -m detfuzz.cli validate-telemetry --host DetFuzz-Win11-Lab --pid 3356 --started 2026-07-20T18:16:03.7596721Z --ended 2026-07-20T18:16:07.9442731Z
-python -m detfuzz.cli evaluate-detection --xml artifacts/sample-sysmon-event.xml
+python -m detfuzz.cli evaluate-detection --xml C:\DetFuzz\runs\<suite-id>\evidence\B0\matched-sysmon-event.xml
 python -m detfuzz.cli build-report --suite-results artifacts/suite-results.json --evidence-root artifacts/evidence --output-dir artifacts/reports
 python -m detfuzz.cli clock-preflight
 python -m detfuzz.cli calibrate-timeouts --output-root C:\DetFuzz\calibration --host DetFuzz-Win11-Lab --runs 20 --telemetry-probe-timeout-seconds 120
