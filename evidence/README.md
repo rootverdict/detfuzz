@@ -1,24 +1,31 @@
-# DetFuzz v0 Evidence
+# DetFuzz V1 Evidence
 
-This folder records the identity of the external portfolio evidence package:
-
-```text
-evidence/portfolio-v0-evidence.zip
-SHA256 7c58fd3ee092abf19841f6ea738f4674d6f138e81e779731283077b3d577dd85
-```
-
-The archive is not checked into this repository. Therefore a source clone
-cannot independently verify the report hashes below. Obtain the archive through
-the portfolio delivery channel and verify its SHA256 before treating the VM run
-as proven.
-
-When present, the evidence archive contains the real Windows VM run for suite:
+This directory records the identity and claim boundary of the latest external
+V1 evidence package.
 
 ```text
-dc017824-0d4e-41d0-9d32-610b410accb0
+artifacts/detfuzz-portfolio-v1-20260811.zip
+SHA256 6d5ba268a4ad59a1732e8d15117854d7c74610736d0597d1e894d7db7b008126
 ```
 
-Summary:
+The archive is intentionally ignored by Git. A source clone cannot independently
+prove the Windows telemetry run; obtain the archive through the portfolio
+delivery channel and verify its SHA256 first.
+
+## Included validation
+
+- DetFuzz package: `1.0.0`.
+- Rule slug: `detfuzz-v1-powershell-encoded-command`.
+- Calibration suite: `80ae23e4-2354-40e3-98db-819ebf2c5dd0`, `PASS`, 20/20
+  runs.
+- Detection suite: `6336eceb-29f8-420e-9cbf-570596354abc`, `COMPLETED`.
+- Benign suite: `8010ec26-0c67-4100-a4ea-324d3edd6bbe`, `COMPLETED`.
+- Detection evidence: 63 files, zero hash or size failures.
+- Benign evidence: 12 files, zero hash or size failures.
+- Contract export and clean wheel.
+- `release-manifest.json` with all release identities and hashes.
+
+## Detection result
 
 ```text
 B0  DETECTED
@@ -31,31 +38,22 @@ NC1 INVALID_MUTANT
 B1  DETECTED
 ```
 
-The archive includes clock preflight, the failed first calibration, the passing
-20-run calibration retry, eight matched Sysmon Event ID 1 XML files, the
-canonical suite report, and a 63-file evidence manifest.
-
-The first calibration is kept intentionally: three telemetry correlations timed
-out under the initial polling window, so calibration was rerun with a larger
-process timeout. The passing retry selected a 74-second telemetry query timeout,
-and the final suite used that Python-written calibration file.
-
-Quick validation command:
-
-```powershell
-cd C:\DetFuzz\release-v0\signalbudget
-$env:PYTHONPATH='src'
-python -m signalbudget.cli validate-detfuzz `
-  --path C:\DetFuzz\portfolio-v0\runs\dc017824-0d4e-41d0-9d32-610b410accb0\reports\suite-report.json `
-  --evidence-root C:\DetFuzz\portfolio-v0\runs\dc017824-0d4e-41d0-9d32-610b410accb0\evidence `
-  --require-suite-contract
-```
-
-Expected validation highlights:
+## Benign result
 
 ```text
-suite_status: COMPLETED
-evidence_files_checked: 63
-evidence_hashes_verified: true
-validated_rule_ids: d4f8c4e4-984d-4f5f-9f6c-1cc6b37f2f62
+BF0 BENIGN_NO_ALERT
+BF1 BENIGN_ALERT
+BF2 BENIGN_ALERT
 ```
+
+## Verify the archive
+
+```powershell
+Get-FileHash `
+  -Algorithm SHA256 `
+  -LiteralPath .\artifacts\detfuzz-portfolio-v1-20260811.zip
+```
+
+After extraction, inspect `release-manifest.json`, the two suite reports, and
+their evidence manifests. Recompute every evidence-file hash before treating
+the recorded result as proven.

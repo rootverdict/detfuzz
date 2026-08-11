@@ -1,19 +1,23 @@
 # DetFuzz V1 Demo Runbook
 
-This runbook demonstrates the DetFuzz V1 story in the Windows 11 lab VM:
+This runbook demonstrates the complete V1 workflow in an authorized Windows
+lab: preflight, calibration, detection-resilience cases, benign fixtures,
+evidence review, and contract export.
 
-- Run the full v0 encoded-command resilience suite.
-- Run the v0.1 benign false-positive fixtures.
-- Export the JSON Schema contract that downstream consumers such as
-  SignalBudget can validate against.
+## Lab assumptions
 
-## Lab Assumptions
+- Windows 10 or Windows 11 test host.
+- Administrator PowerShell.
+- Python 3.11 or newer with DetFuzz installed.
+- Sysmon64 running with [`../configs/sysmon-detfuzz.xml`](../configs/sysmon-detfuzz.xml).
+- Commands are run from the DetFuzz project root.
 
-- Windows 11 Enterprise Evaluation VM is running.
-- VM computer name is `DetFuzz-Win11-Lab`.
-- Sysmon64 is installed and running.
-- DetFuzz source is copied to `C:\DetFuzz\detfuzz`.
-- Commands are run in Administrator PowerShell.
+Set the source import path and use the actual computer name recorded by Sysmon:
+
+```powershell
+$env:PYTHONPATH = "$PWD\src"
+$hostName = $env:COMPUTERNAME
+```
 
 ## 1. Confirm Sysmon
 
@@ -22,164 +26,142 @@ Get-Service Sysmon64
 Get-WinEvent -LogName 'Microsoft-Windows-Sysmon/Operational' -MaxEvents 5
 ```
 
-Expected result:
+The service must be `Running`, and recent Process Create events must be visible.
 
-```text
-Sysmon64 is Running
-Recent Event ID 1 process creation events are visible
-```
-
-## 2. Clock Preflight
+## 2. Run clock preflight
 
 ```powershell
-cd C:\DetFuzz\detfuzz
-$env:PYTHONPATH='src'
 python -m detfuzz.cli clock-preflight
 ```
 
-Expected result:
+Continue only when the JSON result reports `status: PASS`. If it fails, correct
+Windows time synchronization and rerun the command.
 
-```text
-status: PASS
-reason: CLOCK_SYNC_OK
-```
-
-If the status is `PREFLIGHT_FAILED`, resync the VM clock and rerun:
-
-```powershell
-w32tm /resync /force
-python -m detfuzz.cli clock-preflight
-```
-
-## 3. Timeout Calibration
+## 3. Calibrate timeouts
 
 ```powershell
 python -m detfuzz.cli calibrate-timeouts `
   --output-root C:\DetFuzz\calibration `
-  --host DetFuzz-Win11-Lab `
+  --host $hostName `
   --runs 20 `
+  --telemetry-probe-timeout-seconds 120 `
   --max-events 5000
 ```
 
-Validated result from the lab:
+Capture the emitted `output_path`, or select the latest calibration result:
 
-```text
-status: PASS
-runs_completed: 20
-selected process timeout: 30s
-selected telemetry timeout: 30s
-selected telemetry query timeout: 73s
+```powershell
+$calibration = Get-ChildItem C:\DetFuzz\calibration -Directory |
+  Sort-Object LastWriteTime -Descending |
+  Select-Object -First 1
+$calibrationResult = Join-Path $calibration.FullName 'timeout-calibration.json'
 ```
 
-## 4. Run Full v0 Suite
+Continue only when calibration reports `status: PASS`.
+
+## 4. Run the detection suite
 
 ```powershell
 python -m detfuzz.cli run-suite `
   --output-root C:\DetFuzz\runs `
-  --host DetFuzz-Win11-Lab `
+  --host $hostName `
   --max-events 5000 `
-  --calibration-result C:\DetFuzz\calibration\<suite-id>\timeout-calibration.json
+  --calibration-result $calibrationResult
 ```
 
-Replace `<suite-id>` with the calibration folder created in step 3. This keeps
-the suite run aligned with the calibrated telemetry-query timeout instead of
-falling back to the default.
-
-Validated DetFuzz v0 result:
+The validated V1 classification pattern is:
 
 ```text
-B0: DETECTED
-M1: VALID_BYPASS
-M2: DETECTED
-M3: DETECTED
-M4: DETECTED
-M5: DETECTED
-NC1: INVALID_MUTANT
-B1: DETECTED
+B0  DETECTED
+M1  VALID_BYPASS
+M2  DETECTED
+M3  DETECTED
+M4  DETECTED
+M5  DETECTED
+NC1 INVALID_MUTANT
+B1  DETECTED
 ```
 
-## 5. Show Evidence
+The command exits nonzero unless the suite status is `COMPLETED`.
 
-Open the created suite folder:
-
-```powershell
-Get-ChildItem C:\DetFuzz\runs
-```
-
-Then inspect:
-
-```text
-C:\DetFuzz\runs\<suite-id>\suite-results.json
-C:\DetFuzz\runs\<suite-id>\reports\suite-report.md
-C:\DetFuzz\runs\<suite-id>\reports\suite-report.json
-C:\DetFuzz\runs\<suite-id>\reports\evidence-manifest.json
-```
-
-## 6. Run Benign Fixtures
+## 5. Run benign fixtures
 
 ```powershell
 python -m detfuzz.cli run-benign-fixtures `
   --output-root C:\DetFuzz\benign `
-  --host DetFuzz-Win11-Lab `
+  --host $hostName `
   --max-events 5000
 ```
 
-Validated DetFuzz v0.1 benign result:
+The validated benign pattern is:
 
 ```text
-BF0: BENIGN_NO_ALERT
-BF1: BENIGN_ALERT
-BF2: BENIGN_ALERT
+BF0 BENIGN_NO_ALERT
+BF1 BENIGN_ALERT
+BF2 BENIGN_ALERT
 ```
 
-Inspect:
+`BENIGN_ALERT` means the intentionally simple V1 rule matched harmless encoded
+administrative activity. It is a false-positive observation, not a malicious
+classification.
+
+## 6. Export the report contract
+
+```powershell
+python -m detfuzz.cli export-contract `
+  --output C:\DetFuzz\contracts\detfuzz-suite-report-1.0.schema.json
+```
+
+The exported schema is the stable handoff contract for downstream consumers.
+
+## 7. Review evidence
+
+Inspect the newest suite and benign directories. Each must contain raw results,
+JSON and Markdown reports, and an evidence manifest:
 
 ```text
+C:\DetFuzz\runs\<suite-id>\suite-results.json
+C:\DetFuzz\runs\<suite-id>\reports\suite-report.json
+C:\DetFuzz\runs\<suite-id>\reports\suite-report.md
+C:\DetFuzz\runs\<suite-id>\reports\evidence-manifest.json
 C:\DetFuzz\benign\<suite-id>\benign-results.json
-C:\DetFuzz\benign\<suite-id>\reports\suite-report.md
 C:\DetFuzz\benign\<suite-id>\reports\suite-report.json
 C:\DetFuzz\benign\<suite-id>\reports\evidence-manifest.json
 ```
 
-## 7. Export the SignalBudget Contract
+Verify the raw files and SHA256 hashes before presenting a historical result.
+The source repository alone does not prove a Windows telemetry run.
+
+## Guided helper
+
+Run the complete workflow with the bundled helper:
 
 ```powershell
-python -m detfuzz.cli export-contract `
-  --output C:\DetFuzz\detfuzz\artifacts\detfuzz-suite-report-1.0.schema.json
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\demo\detfuzz-demo.ps1 `
+  -ProjectRoot $PWD `
+  -HostName $env:COMPUTERNAME `
+  -RunAll
 ```
 
-Expected result:
-
-```text
-schema: C:\DetFuzz\detfuzz\artifacts\detfuzz-suite-report-1.0.schema.json
-```
-
-This schema is the V1 handoff contract. DetFuzz owns producing the report and
-schema; SignalBudget owns consuming them.
-
-## 8. Explain the Finding
-
-The key v0 finding is that the brittle demo rule matched standard
-`-EncodedCommand`, but the alias mutation `-enc` produced the same harmless
-marker effect without matching that exact command-line dependency.
-
-That makes `M1` a valid bypass for the intentionally narrow v0 rule, while the
-closing positive control `B1` proves the detector was still working at the end.
-
-The benign fixture result adds the false-positive lens: the same v0 rule also
-alerts on harmless encoded administrative activity, so V1 can discuss both
-resilience and specificity without claiming the benign commands are malicious.
-
-## Optional Guided Demo Helper
-
-From the project root:
+For a faster rerun that uses default suite timeouts:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\demo\detfuzz-demo.ps1 -RunSuite
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\demo\detfuzz-demo.ps1 `
+  -ProjectRoot $PWD `
+  -HostName $env:COMPUTERNAME `
+  -SkipCalibration `
+  -RunAll
 ```
 
-For a faster rerun after calibration has already been captured:
+## Explain the finding
 
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\demo\detfuzz-demo.ps1 -SkipCalibration -RunSuite
-```
+The V1 rule depends on the literal `-EncodedCommand` command-line fragment.
+`M1` uses PowerShell's valid `-enc` alias, produces the same harmless marker,
+and retains complete Sysmon telemetry, but does not satisfy that literal rule
+dependency. The closing baseline `B1` proves the detector was still working.
+
+That makes `M1` a valid bypass of this intentionally narrow test rule. The
+benign encoded fixtures show the other side of the design problem: broad
+matching can also alert on harmless administration.

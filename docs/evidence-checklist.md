@@ -1,46 +1,51 @@
-# DetFuzz Evidence Checklist
+# DetFuzz V1 Evidence Checklist
 
-Use this checklist before packaging a DetFuzz phase or demo archive.
+Use this checklist before packaging or presenting a DetFuzz run.
 
-## Required Lab Evidence
+## Environment record
 
-- Windows VM name: `DetFuzz-Win11-Lab`
-- Sysmon64 service status screenshot or command output.
-- `clock-preflight` JSON output showing `status: PASS`.
-- `calibrate-timeouts` JSON output showing `status: PASS`.
-- Full `run-suite` JSON output.
-- Suite folder path under `C:\DetFuzz\runs\<suite-id>`.
-- Phase 7 benign fixture output, if validating v0.1.
+- Windows host name and operating-system version.
+- Python and DetFuzz package versions.
+- Sysmon64 service status and active configuration hash.
+- Sysmon operational channel name.
+- Clock-preflight JSON with `status: PASS`.
+- Timeout-calibration JSON with `status: PASS`.
 
-Do not rely on Markdown summaries alone. A reviewer should be able to inspect
-the raw JSON reports and evidence manifest.
-
-## Required Files
+## Detection-suite files
 
 ```text
-C:\DetFuzz\runs\<suite-id>\suite-results.json
-C:\DetFuzz\runs\<suite-id>\reports\suite-report.md
-C:\DetFuzz\runs\<suite-id>\reports\suite-report.json
-C:\DetFuzz\runs\<suite-id>\reports\evidence-manifest.json
-C:\DetFuzz\calibration\<suite-id>\timeout-calibration.json
-C:\DetFuzz\benign\<suite-id>\benign-results.json
-C:\DetFuzz\benign\<suite-id>\reports\suite-report.md
+<run-root>\<suite-id>\suite-results.json
+<run-root>\<suite-id>\reports\suite-report.json
+<run-root>\<suite-id>\reports\suite-report.md
+<run-root>\<suite-id>\reports\evidence-manifest.json
+<run-root>\<suite-id>\evidence\...
 ```
 
-## Review Checks
+## Benign-fixture files
 
-- `B0` is `DETECTED`.
-- `B1` is `DETECTED`.
+```text
+<benign-root>\<suite-id>\benign-results.json
+<benign-root>\<suite-id>\reports\suite-report.json
+<benign-root>\<suite-id>\reports\suite-report.md
+<benign-root>\<suite-id>\reports\evidence-manifest.json
+<benign-root>\<suite-id>\evidence\...
+```
+
+## Review checks
+
+- Suite status is `COMPLETED`.
+- `B0` and `B1` are `DETECTED`.
 - `NC1` is `INVALID_MUTANT`.
-- Candidate bypasses are only called valid when marker and telemetry are valid.
-- Evidence manifest contains hashes for saved evidence files.
-- Report notes mention any calibration or clock warnings.
-- For Phase 7, benign fixture alerts are reported as `BENIGN_ALERT`, not as
-  bypasses.
-- For Phase 7, predicted fixture results must stay separate from observed VM
-  results.
+- A bypass is valid only when execution, marker, telemetry, identity, and closing
+  baseline checks all succeed.
+- Every retained evidence file matches its recorded SHA256 digest and size.
+- Benign results use `BENIGN_ALERT` or `BENIGN_NO_ALERT`; they are never labeled
+  as bypasses.
+- Predicted benign outcomes remain separate from observed outcomes.
+- The exported schema matches the packaged canonical contract.
 
-## Portfolio Notes
+## Claim boundary
 
-Include the final Markdown report and the talk track. Keep raw logs available
-for review, but lead with the short result table.
+Markdown summaries are navigation aids, not independent proof. Keep the raw
+suite, calibration, benign, telemetry, and manifest files in the external
+portfolio package so another reviewer can recompute every hash.

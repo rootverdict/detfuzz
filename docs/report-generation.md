@@ -1,27 +1,28 @@
 # Evidence and Report Generation
 
-This document covers the report-generation capability that was built before the
-blueprint documentation/demo phase.
+DetFuzz writes an evidence-backed report bundle for both the detection suite
+and benign fixtures.
 
-## Implemented
+## Outputs
 
-- SHA-256 hashing for evidence files.
-- Evidence manifest generation with relative path, size, and hash.
-- Suite results JSON validation.
-- Evidence-backed suite report model.
-- Classification summary counts.
-- JSON report output.
-- Markdown report output.
-- Standalone evidence manifest output.
-- `build-report` CLI command.
+- `suite-report.json`: canonical machine-readable report.
+- `suite-report.md`: concise human-readable rendering.
+- `evidence-manifest.json`: relative path, size, and SHA256 for each raw evidence
+  file.
 
-## Input Contract
+The report layer never invents evidence. It hashes files that already exist in
+the supplied evidence directory and validates the generated JSON against the
+packaged V1 report contract.
 
-The reporter expects a suite results JSON file:
+## Input shape
+
+The standalone reporter accepts a results JSON file containing at least a suite
+ID, environment, and case records:
 
 ```json
 {
   "suite_id": "suite-id",
+  "suite_status": "COMPLETED",
   "environment": {
     "host": "DetFuzz-Win11-Lab"
   },
@@ -35,26 +36,25 @@ The reporter expects a suite results JSON file:
 }
 ```
 
-The reporter does not invent evidence. It hashes files already present in the
-provided evidence directory.
-
-## CLI
+## Rebuild a report
 
 ```powershell
 python -m detfuzz.cli build-report `
-  --suite-results C:\DetFuzz\suite-results.json `
-  --evidence-root C:\DetFuzz\evidence `
-  --output-dir C:\DetFuzz\reports
+  --suite-results C:\DetFuzz\runs\<suite-id>\suite-results.json `
+  --evidence-root C:\DetFuzz\runs\<suite-id>\evidence `
+  --output-dir C:\DetFuzz\runs\<suite-id>\reports
 ```
 
-## VM Validation Result
+The output directory is created when needed. Existing report files at the exact
+destination paths are replaced by the newly validated bundle.
 
-Validated on 2026-07-21 against the Windows 11 Enterprise Evaluation VM.
+## Contract
 
-Output files:
+The canonical schema is
+`src/detfuzz/contracts/detfuzz-suite-report-1.0.schema.json`. Export a consumer
+copy with:
 
-```text
-C:\DetFuzz\reports\evidence-manifest.json
-C:\DetFuzz\reports\suite-report.json
-C:\DetFuzz\reports\suite-report.md
+```powershell
+python -m detfuzz.cli export-contract `
+  --output C:\DetFuzz\contracts\detfuzz-suite-report-1.0.schema.json
 ```

@@ -152,18 +152,25 @@ Health-producing commands return a nonzero exit code when preflight,
 calibration, telemetry, or suite validation fails. Their JSON result is still
 written to standard output for diagnosis and automation.
 
-For a guided demonstration, use:
+For a guided demonstration of the complete V1 workflow, use:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass `
-  -File .\demo\detfuzz-demo.ps1 -RunSuite
+  -File .\demo\detfuzz-demo.ps1 `
+  -ProjectRoot $PWD `
+  -HostName $env:COMPUTERNAME `
+  -RunAll
 ```
 
 After calibration has already been captured, the faster rerun is:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass `
-  -File .\demo\detfuzz-demo.ps1 -SkipCalibration -RunSuite
+  -File .\demo\detfuzz-demo.ps1 `
+  -ProjectRoot $PWD `
+  -HostName $env:COMPUTERNAME `
+  -SkipCalibration `
+  -RunAll
 ```
 
 The complete operator sequence and evidence review steps are documented in
@@ -236,7 +243,7 @@ python -m unittest discover -s tests
 The current verified result is:
 
 ```text
-84 tests passed; 1 expected dependency-path test skipped when pySigma is installed
+87 tests run; 86 passed and 1 expected dependency-path test skipped
 Ruff: all checks passed
 mypy: no issues found
 ```

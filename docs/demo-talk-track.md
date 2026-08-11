@@ -1,33 +1,32 @@
-# DetFuzz Demo Talk Track
+# DetFuzz V1 Demo Talk Track
 
-## One-Minute Version
+## One-minute version
 
-DetFuzz is a blue-team detection resilience lab. It safely runs harmless
-PowerShell command-line variants in a Windows VM, validates that the intended
-marker effect happened, correlates the process with Sysmon telemetry, evaluates
-the detection rule dependency, and classifies the result.
+DetFuzz is a blue-team detection-resilience lab. It executes allow-listed,
+harmless PowerShell command-line variants, verifies the intended marker effect,
+correlates the process with Sysmon Event ID 1, evaluates the packaged detection
+rule, and writes evidence-backed reports.
 
-The important point is that DetFuzz does not call something a bypass just
-because a rule missed. A candidate must still complete the marker oracle, have
-valid telemetry, and be bracketed by working baseline detections.
+DetFuzz does not call a missed alert a bypass by itself. The fixture must execute
+successfully, pass exact marker validation, have complete telemetry and matching
+executable identity, and be bracketed by working opening and closing controls.
 
-For V1, DetFuzz also runs benign encoded PowerShell fixtures and exports a
-versioned JSON Schema so SignalBudget can consume the generated suite report as
-stable input.
+V1 also runs benign fixtures to expose false positives and exports a versioned
+JSON Schema so another project can consume the report without sharing DetFuzz
+internals.
 
-## Demo Story
+## Demo sequence
 
-1. Confirm Sysmon is running.
-2. Run clock preflight so timing-based telemetry correlation is trustworthy.
-3. Run timeout calibration to choose stable lab timeouts.
-4. Run the full v0 sequence: `B0, M1-M5, NC1, B1`.
-5. Run the v0.1 benign fixture sequence: `BF0-BF2`.
-6. Export the DetFuzz suite-report JSON Schema.
-7. Open the Markdown reports and evidence manifests.
-8. Explain why `M1` is classified as `VALID_BYPASS` and why `BF1/BF2` are
-   benign alerts, not bypasses.
+1. Confirm Sysmon is running and Process Create events are visible.
+2. Run clock preflight.
+3. Calibrate process and telemetry timeouts.
+4. Run `B0, M1-M5, NC1, B1`.
+5. Run benign fixtures `BF0-BF2`.
+6. Export the suite-report JSON Schema.
+7. Review the reports and evidence manifests.
+8. Explain `M1` as a valid bypass and `BF1/BF2` as benign alerts.
 
-## Validated Result
+## Validated result
 
 ```text
 B0 DETECTED
@@ -38,34 +37,24 @@ M4 DETECTED
 M5 DETECTED
 NC1 INVALID_MUTANT
 B1 DETECTED
-```
 
-Benign fixture result:
-
-```text
 BF0 BENIGN_NO_ALERT
 BF1 BENIGN_ALERT
 BF2 BENIGN_ALERT
 ```
 
-## What Makes It Different
+## Why the result is defensible
 
-- It separates execution truth from detection truth.
-- It uses a marker oracle instead of assuming a process launch means success.
-- It requires Sysmon Event ID 1 telemetry before classification.
-- It uses opening and closing controls to avoid stale or broken-detector claims.
-- It archives evidence with hashes for repeatable review.
-- It separates bypass evidence from benign false-positive evidence.
-- It exports a stable JSON contract for SignalBudget instead of coupling the two
-  projects directly.
+- Execution truth and detection truth are evaluated separately.
+- The marker oracle proves the harmless effect happened.
+- Sysmon correlation is required before classification.
+- Executable SHA256 identity is checked.
+- Opening and closing controls guard against a broken detector.
+- Evidence files are hashed for later review.
+- Benign alerts are kept separate from bypass findings.
 
-## Current Boundaries
+## Boundaries
 
-- V1 is intentionally scoped to a single encoded PowerShell rule shape plus the
-  v0.1 benign fixture lens.
-- Payloads are harmless marker writers.
-- pySigma is declared as a dependency; the local bundled runner skips the
-  installed-pySigma test if the package is absent.
-- The Windows VM lab is required for real telemetry validation.
-- SignalBudget consumption is outside DetFuzz V1; DetFuzz only exports the
-  report and schema.
+V1 covers one encoded-command PowerShell rule shape and one Windows Sysmon
+telemetry path. It does not claim broad detector coverage, production SIEM
+integration, malicious payload testing, or downstream SignalBudget execution.

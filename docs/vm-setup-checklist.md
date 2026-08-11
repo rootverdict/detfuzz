@@ -1,51 +1,54 @@
-# Windows VM Setup Checklist
+# Windows Lab Setup Checklist
 
-Use this checklist while preparing the DetFuzz lab VM.
+Use an isolated Windows host or VM that you own or are explicitly authorized to
+test.
 
-## Recommended VM
+## Recommended lab
 
-- Windows 11 Enterprise Evaluation, 64-bit
-- 2 CPU cores
-- 4-8 GB RAM
-- 60 GB disk
-- NAT networking
+- Windows 10 or Windows 11, 64-bit.
+- 2 or more CPU cores.
+- 4-8 GB RAM.
+- 60 GB disk.
+- NAT networking.
+- Administrator PowerShell.
+- Python 3.11 or newer.
 
-## Snapshots
+## Sysmon
 
-1. Clean Windows installed.
-2. Sysmon installed and Event ID 1 visible.
-3. DetFuzz baseline marker payload verified.
-4. Full v0 suite and v0.1 benign fixture validation complete.
-
-## Sysmon Installation
-
-From an Administrator PowerShell after copying the repository to `C:\DetFuzz\detfuzz`:
+Copy the official Sysinternals `Sysmon64.exe` to a known tools directory, then
+install the checked-in configuration:
 
 ```powershell
-$sysmon = 'C:\Tools\DetFuzzSysmon\Sysmon64.exe'
-& $sysmon -accepteula -i C:\DetFuzz\detfuzz\configs\sysmon-detfuzz.xml
+$sysmonPath = 'C:\Tools\DetFuzzSysmon\Sysmon64.exe'
+& $sysmonPath -accepteula -i C:\DetFuzz\detfuzz\configs\sysmon-detfuzz.xml
 Get-Service Sysmon64
 Get-WinEvent -LogName 'Microsoft-Windows-Sysmon/Operational' -MaxEvents 5
 ```
 
-The project configuration records PowerShell Process Create events and enables
-SHA256 hashes, which are required by the DetFuzz telemetry and identity checks.
+For an existing installation, apply configuration changes with `-c` instead of
+`-i`. The configuration must record PowerShell Process Create events and include
+SHA256 hashes.
 
-## Phase 2 Validation Target
+## Python environment
 
-Run one prepared baseline command and confirm:
+```powershell
+cd C:\DetFuzz\detfuzz
+py -3.12 -m venv .venv312
+.\.venv312\Scripts\Activate.ps1
+python -m pip install -c constraints.txt -e ".[dev]"
+$env:PYTHONPATH = "$PWD\src"
+```
 
-- The marker file is created at the exact expected path.
-- The marker JSON contains the expected suite ID, case ID, nonce, and result.
-- The command exits with code 0.
+## Validation checklist
 
-## V1 Validation Target
-
-Before using the VM for a V1 demo, confirm:
-
+- `Get-Service Sysmon64` reports `Running`.
+- Recent Sysmon Event ID 1 records are visible.
 - `clock-preflight` returns `PASS`.
-- `calibrate-timeouts` returns `PASS`.
-- `run-suite` writes a complete v0 report under `C:\DetFuzz\runs\<suite-id>`.
-- `run-benign-fixtures` writes a complete v0.1 report under
-  `C:\DetFuzz\benign\<suite-id>`.
-- Raw reports and evidence manifests are retained outside the source archive.
+- `calibrate-timeouts` completes all requested runs and returns `PASS`.
+- `run-suite` writes a complete V1 report and evidence manifest.
+- `run-benign-fixtures` writes a complete benign report and evidence manifest.
+- `export-contract` writes the canonical schema.
+- Raw evidence is retained outside the source archive.
+
+Take a clean VM snapshot after installation and another after the complete V1
+workflow has been validated.

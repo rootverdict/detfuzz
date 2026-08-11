@@ -1,55 +1,40 @@
-# Timeout Calibration and Clock Preflight
+# Clock Preflight and Timeout Calibration
 
-This implements the blueprint phase:
+Live Sysmon correlation is timing-sensitive. DetFuzz checks clock health and
+measures the lab before running the detection suite.
 
-```text
-Timeout calibration + clock preflight
-```
-
-## Clock Preflight
-
-Run inside the Windows 11 VM:
+## Clock preflight
 
 ```powershell
-cd C:\DetFuzz\detfuzz
-$env:PYTHONPATH='src'
+$env:PYTHONPATH = "$PWD\src"
 python -m detfuzz.cli clock-preflight
 ```
 
-Expected status:
+The command queries Windows time status and compares local UTC sources. It
+returns nonzero unless status is `PASS`; an absolute offset greater than 2000 ms
+fails preflight.
 
-```text
-PASS
-```
-
-The preflight fails when absolute UTC offset is greater than 2000 ms.
-
-## Timeout Calibration
-
-Run 20 B0 baselines:
+## Timeout calibration
 
 ```powershell
-cd C:\DetFuzz\detfuzz
-$env:PYTHONPATH='src'
 python -m detfuzz.cli calibrate-timeouts `
   --output-root C:\DetFuzz\calibration `
-  --host DetFuzz-Win11-Lab `
+  --host $env:COMPUTERNAME `
   --runs 20 `
   --telemetry-probe-timeout-seconds 120 `
   --max-events 5000
 ```
 
-The selected timeout method is:
+Calibration repeatedly runs the opening baseline and records process duration,
+telemetry latency, and query duration. Each selected timeout is:
 
 ```text
-max(30s, observed_max + 10s)
+max(30 seconds, observed maximum + 10 seconds)
 ```
 
-If a selected timeout exceeds 120 seconds, calibration status becomes:
-
-```text
-UNSTABLE_TIMEOUTS
-```
+Calibration reports `PASS` only when every observation has valid execution,
+marker, telemetry, and detection results and every selected timeout is at most
+120 seconds. Otherwise it reports `CALIBRATION_FAILED` and exits nonzero.
 
 ## Output
 
@@ -59,5 +44,5 @@ Each calibration creates:
 C:\DetFuzz\calibration\<suite-id>\timeout-calibration.json
 ```
 
-The file records raw observations, min/median/max values, selected timeouts,
-and the selection method.
+Pass this file to `run-suite --calibration-result` so the live suite uses the
+measured process and telemetry timeouts.
