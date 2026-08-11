@@ -1,98 +1,230 @@
 # DetFuzz
 
-DetFuzz is a small detection resilience experiment runner. Its first version
-tests whether a Sigma/SIEM detection for PowerShell encoded commands still
-matches when the same harmless behavior is expressed through valid command-line
-variations.
+DetFuzz is an evidence-backed Windows detection-resilience test runner. It
+executes safe PowerShell fixtures, correlates the resulting process telemetry,
+evaluates a packaged detection rule, and produces reproducible JSON and
+Markdown reports.
 
-## v0 Goal
+The current release is V1. It is deliberately focused on one encoded-command
+PowerShell rule shape so that every finding can be tied to valid execution,
+complete telemetry, a detection result, and retained evidence.
 
-The first milestone is intentionally narrow:
+## V1 at a glance
 
-- Opening positive control: standard `-EncodedCommand`
-- Five valid syntactic mutations
-- Invalid negative control with corrupted Base64
-- Closing positive control
-- Deterministic classification
-- Machine-readable JSON output
-- Human-readable report
+DetFuzz V1 provides:
 
-For the current V1/V2 project boundary, see
-[`docs/version-boundary.md`](docs/version-boundary.md). V1 is the
-portfolio-ready release built from the validated v0 suite, v0.1 benign fixtures,
-evidence/reporting flow, and demo materials. V2 ideas are tracked separately so
-the first release does not keep expanding.
+- Eight safe resilience cases: opening baseline `B0`, five valid mutations
+  (`M1`-`M5`), invalid negative control `NC1`, and closing baseline `B1`.
+- Marker-file validation proving that each fixture completed the expected
+  harmless action with the correct suite ID, case ID, nonce, and result.
+- Sysmon Event ID 1 correlation by host, PID, executable image, command line,
+  SHA256 hash, and UTC execution window.
+- Deterministic classification of detected cases, valid bypass candidates,
+  invalid mutants, telemetry failures, and pipeline errors.
+- Clock preflight and repeated timeout calibration before timing-sensitive runs.
+- SHA256 evidence manifests plus machine-readable and human-readable reports.
+- Three benign false-positive fixtures: plain PowerShell, encoded `Get-Date`,
+  and encoded service listing.
+- Export of the versioned `detfuzz-suite-report-1.0` JSON Schema for consumers
+  such as SignalBudget.
 
-## Current Status
+A `VALID_BYPASS` result means that a known harmless fixture executed
+successfully, its marker and telemetry were valid, the rule did not match, and
+the closing baseline confirmed that detection was still functioning. It is a
+rule-resilience finding, not a claim that the fixture is malicious.
 
-This repository currently contains the local core:
+## V1 status
 
-- v0 case inventory
-- result data model
-- classification logic
-- CLI demo using simulated case observations
-- Phase 2 runner preparation for safe PowerShell marker payloads
-- allow-listed v0 command generation
-- structured, registry-backed v0 command mutations
-- Phase 3 marker oracle
-- Phase 3 Sysmon Event ID 1 XML parsing and required-field validation
-- Phase 5 v0 detection rule dependencies and event evaluation
-- Phase 6 evidence manifest and report generation
-- blueprint Phase 6 documentation and demo materials
-- Phase 7 v0.1 benign fixture runner
-- unit tests for the classifier
+V1 is complete and locally verified on 2026-08-11 with the pinned development
+toolchain.
 
-Phase 2, Phase 3, Phase 4, Phase 5, timeout calibration, and clock preflight
-VM validation are complete.
-Simulated classifier output is still fake and must not be presented as a real
-DetFuzz report.
-
-The full v0 suite runner has also been run in the VM according to the pasted
-lab output:
+The latest end-to-end run produced:
 
 ```text
-B0 DETECTED
-M1 VALID_BYPASS
-M2-M5 DETECTED
+Detection suite: COMPLETED
+B0  DETECTED
+M1  VALID_BYPASS
+M2  DETECTED
+M3  DETECTED
+M4  DETECTED
+M5  DETECTED
 NC1 INVALID_MUTANT
-B1 DETECTED
+B1  DETECTED
+
+Benign fixtures: COMPLETED
+BF0 BENIGN_NO_ALERT
+BF1 BENIGN_ALERT
+BF2 BENIGN_ALERT
 ```
 
-Important evidence boundary: the source zip does not independently prove the VM
-run. Keep the raw files from `C:\DetFuzz\runs\<suite-id>` and
-`C:\DetFuzz\calibration\<suite-id>` with the portfolio evidence package. See
-`docs/phase-6-evidence-boundary.md`.
+All eight resilience cases and all three benign fixtures had complete
+telemetry. The detection run produced a 63-file SHA256 evidence manifest; the
+benign run produced a 12-file manifest. Timeout calibration passed all 20 of
+20 baseline runs, and contract export passed.
 
-The checked-in `evidence/suite-report.md` is an unverified summary snapshot.
-The raw 63-file VM evidence package is intentionally not in this repository, so
-the listed hashes cannot be independently rechecked from a source clone alone.
+The raw run directories are intentionally ignored by Git. Keep them with the
+external evidence package when the VM result needs to be independently
+reviewed; a source clone alone cannot prove a historical Windows telemetry run.
+See [`docs/v1-local-validation.md`](docs/v1-local-validation.md) and
+[`docs/evidence-checklist.md`](docs/evidence-checklist.md).
 
-Blueprint Phase 6 adds the portfolio/demo layer:
+## Requirements
 
-- `docs/demo-runbook.md`
-- `docs/demo-talk-track.md`
-- `docs/evidence-checklist.md`
-- `demo/detfuzz-demo.ps1`
+- Windows 10 or Windows 11 test host or lab VM.
+- Python 3.11 or newer.
+- Windows PowerShell available as `powershell.exe`.
+- Sysmon64 installed and running with Process Create events enabled and
+  SHA256 hashing configured. The repository includes the recommended config at
+  [`configs/sysmon-detfuzz.xml`](configs/sysmon-detfuzz.xml).
+- `pySigma==1.4.0`; the pinned development tools are listed in
+  [`constraints.txt`](constraints.txt).
 
-## Run Locally
+Run the commands below from an Administrator PowerShell session in an isolated
+lab that you own or are authorized to test.
+
+## Setup
 
 ```powershell
-$env:PYTHONPATH='src'
-python -m unittest discover -s tests
-python -m detfuzz.cli simulate-report
-python -m detfuzz.cli prepare-suite --root artifacts/runs
-python -m detfuzz.cli validate-telemetry --host DetFuzz-Win11-Lab --pid 3356 --started 2026-07-20T18:16:03.7596721Z --ended 2026-07-20T18:16:07.9442731Z
-python -m detfuzz.cli evaluate-detection --xml C:\DetFuzz\runs\<suite-id>\evidence\B0\matched-sysmon-event.xml
-python -m detfuzz.cli build-report --suite-results artifacts/suite-results.json --evidence-root artifacts/evidence --output-dir artifacts/reports
-python -m detfuzz.cli clock-preflight
-python -m detfuzz.cli calibrate-timeouts --output-root C:\DetFuzz\calibration --host DetFuzz-Win11-Lab --runs 20 --telemetry-probe-timeout-seconds 120
-python -m detfuzz.cli run-suite --output-root C:\DetFuzz\runs --host DetFuzz-Win11-Lab --calibration-result C:\DetFuzz\calibration\<suite-id>\timeout-calibration.json
-python -m detfuzz.cli prepare-benign-fixtures --root C:\DetFuzz\benign
-python -m detfuzz.cli run-benign-fixtures --output-root C:\DetFuzz\benign --host DetFuzz-Win11-Lab --telemetry-timeout-seconds 30
-python -m detfuzz.cli export-contract --output artifacts\detfuzz-suite-report-1.0.schema.json
+py -3.12 -m venv .venv312
+.\.venv312\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -c constraints.txt -e ".[dev]"
+$env:PYTHONPATH = "$PWD\src"
 ```
 
-For release verification with the pinned pySigma and lint toolchain:
+If Sysmon is not installed, obtain the official Sysinternals Sysmon package,
+then apply the checked-in configuration from the project root:
+
+```powershell
+.\Sysmon64.exe -accepteula -i .\configs\sysmon-detfuzz.xml
+```
+
+For an existing installation, update its configuration with:
+
+```powershell
+.\Sysmon64.exe -c .\configs\sysmon-detfuzz.xml
+Get-Service Sysmon64
+Get-WinEvent -LogName 'Microsoft-Windows-Sysmon/Operational' -MaxEvents 5
+```
+
+The service must be running and the operational channel must contain Process
+Create events before a live suite is started.
+
+## Run the V1 workflow
+
+Set the output roots somewhere outside the source tree when retaining a lab
+evidence package. The following commands use `C:\DetFuzz` as an example.
+
+```powershell
+$env:PYTHONPATH = "$PWD\src"
+$hostName = $env:COMPUTERNAME
+
+python -m detfuzz.cli clock-preflight
+
+python -m detfuzz.cli calibrate-timeouts `
+  --output-root C:\DetFuzz\calibration `
+  --host $hostName `
+  --runs 20 `
+  --telemetry-probe-timeout-seconds 120 `
+  --max-events 5000
+
+$calibration = Get-ChildItem C:\DetFuzz\calibration -Directory |
+  Sort-Object LastWriteTime -Descending |
+  Select-Object -First 1
+$calibrationResult = Join-Path $calibration.FullName 'timeout-calibration.json'
+
+python -m detfuzz.cli run-suite `
+  --output-root C:\DetFuzz\runs `
+  --host $hostName `
+  --max-events 5000 `
+  --calibration-result $calibrationResult
+
+python -m detfuzz.cli run-benign-fixtures `
+  --output-root C:\DetFuzz\benign `
+  --host $hostName `
+  --max-events 5000
+
+python -m detfuzz.cli export-contract `
+  --output .\artifacts\detfuzz-suite-report-1.0.schema.json
+```
+
+Health-producing commands return a nonzero exit code when preflight,
+calibration, telemetry, or suite validation fails. Their JSON result is still
+written to standard output for diagnosis and automation.
+
+For a guided demonstration, use:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\demo\detfuzz-demo.ps1 -RunSuite
+```
+
+After calibration has already been captured, the faster rerun is:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\demo\detfuzz-demo.ps1 -SkipCalibration -RunSuite
+```
+
+The complete operator sequence and evidence review steps are documented in
+[`docs/demo-runbook.md`](docs/demo-runbook.md).
+
+## Reports and evidence
+
+Every live detection suite creates a fresh suite directory containing:
+
+```text
+<suite-id>\suite-results.json
+<suite-id>\reports\suite-report.json
+<suite-id>\reports\suite-report.md
+<suite-id>\reports\evidence-manifest.json
+<suite-id>\evidence\...
+```
+
+The benign-fixture runner creates the same report bundle alongside
+`benign-results.json`. The evidence manifest records each retained file's
+relative path, size, and SHA256 digest. Reports do not invent evidence: they
+hash the files produced by the run.
+
+For an existing result and evidence directory, reports can also be rebuilt
+directly:
+
+```powershell
+python -m detfuzz.cli build-report `
+  --suite-results C:\DetFuzz\runs\<suite-id>\suite-results.json `
+  --evidence-root C:\DetFuzz\runs\<suite-id>\evidence `
+  --output-dir C:\DetFuzz\runs\<suite-id>\reports
+```
+
+The canonical contract is packaged at
+[`src/detfuzz/contracts/detfuzz-suite-report-1.0.schema.json`](src/detfuzz/contracts/detfuzz-suite-report-1.0.schema.json).
+Use `export-contract` to hand a copy to a downstream consumer. DetFuzz owns
+the report and schema; the consumer owns its independent validation and
+integration checks.
+
+## Useful diagnostic commands
+
+Generate safe case directories and command lines without executing them:
+
+```powershell
+python -m detfuzz.cli prepare-suite --root C:\DetFuzz\prepared
+python -m detfuzz.cli prepare-benign-fixtures --root C:\DetFuzz\prepared-benign
+```
+
+Validate one saved Sysmon XML event:
+
+```powershell
+python -m detfuzz.cli evaluate-detection `
+  --xml C:\DetFuzz\runs\<suite-id>\evidence\B0\matched-sysmon-event.xml
+```
+
+The `simulate-report` command is available only as a local development aid.
+Its output is explicitly marked as simulated and must never be used as VM
+evidence or presented as a real DetFuzz result.
+
+## Development verification
+
+Install the pinned toolchain and run all checks:
 
 ```powershell
 python -m pip install -c constraints.txt -e ".[dev]"
@@ -101,66 +233,34 @@ python -m mypy src tests
 python -m unittest discover -s tests
 ```
 
-Expected installed-dependency result:
+The current verified result is:
 
 ```text
-Ran 81 tests
-OK (skipped=1)
+84 tests passed; 1 expected dependency-path test skipped when pySigma is installed
+Ruff: all checks passed
+mypy: no issues found
 ```
 
-One local-only negative test is skipped when pySigma is installed because it
-only verifies the missing-pySigma error path. CI runs the installed-dependency
-path on Windows.
+## V1 boundary
 
-Commands that produce health statuses exit nonzero when preflight, calibration,
-suite, benign-fixture, or telemetry validation fails. Their JSON output is still
-written to stdout for automation and diagnosis.
+V1 intentionally covers one safe encoded-command PowerShell rule shape and
+the Windows Sysmon evidence path. It does not include:
 
-## DetFuzz to SignalBudget Contract
+- parent-process mutation or additional execution surfaces;
+- multiple rule packs or broad backend comparison;
+- live SIEM integrations;
+- telemetry providers other than the current Sysmon flow;
+- a web UI, dashboard, or distributed runner;
+- automated remediation or large payload libraries.
 
-DetFuzz owns the canonical versioned JSON Schema at
-`src/detfuzz/contracts/detfuzz-suite-report-1.0.schema.json`. Use
-`export-contract` to copy the packaged schema for a consumer. SignalBudget keeps
-an independent consumer implementation and its cross-project integration test
-checks that a DetFuzz-generated report passes the strict contract.
-
-## Demo
-
-Inside the VM:
-
-```powershell
-cd C:\DetFuzz\detfuzz
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\demo\detfuzz-demo.ps1 -RunSuite
-```
-
-For a faster check that skips calibration:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\demo\detfuzz-demo.ps1 -SkipCalibration -RunSuite
-```
-
-## v0.1 Benign Fixtures
-
-Phase 7 adds benign false-positive fixtures:
-
-```text
-BF0 plain PowerShell command
-BF1 benign encoded Get-Date
-BF2 benign encoded service listing
-```
-
-These are not bypass candidates. They measure whether the current v0 rule also
-matches harmless encoded PowerShell activity.
-
-Validated Phase 7 VM result:
-
-```text
-BF0 BENIGN_NO_ALERT
-BF1 BENIGN_ALERT
-BF2 BENIGN_ALERT
-```
+These are possible future expansions and are tracked in
+[`docs/version-boundary.md`](docs/version-boundary.md). They are not required
+to operate or evaluate the current V1 release.
 
 ## Safety
 
-DetFuzz v0 must only execute harmless marker-producing PowerShell payloads in an
-isolated lab you own or are explicitly authorized to test.
+DetFuzz is designed for harmless, marker-producing PowerShell fixtures in an
+isolated lab. Do not run it against systems, accounts, or telemetry that you do
+not own or have explicit permission to test. Keep raw evidence and reports
+available for review, and do not treat a `VALID_BYPASS` result as a license to
+execute arbitrary or malicious payloads.
