@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Sysmon schemaversion="4.82">
+  <!-- DetFuzz requires SHA256 in the Sysmon Process Create Hashes field. -->
+  <HashAlgorithms>SHA256</HashAlgorithms>
+  <EventFiltering>
+    <!-- DetFuzz executes Windows PowerShell and correlates Event ID 1. -->
+    <ProcessCreate onmatch="include">
+      <Image condition="end with">powershell.exe</Image>
+    </ProcessCreate>
+  </EventFiltering>
+</Sysmon>

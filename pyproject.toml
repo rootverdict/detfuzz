@@ -24,7 +24,7 @@ detfuzz = "detfuzz.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-detfuzz = ["configs/*.yml", "configs/*.json", "contracts/*.json"]
+detfuzz = ["configs/*.yml", "configs/*.json", "configs/*.xml", "contracts/*.json"]
 
 [tool.ruff]
 line-length = 100

@@ -17,6 +17,20 @@ Use this checklist while preparing the DetFuzz lab VM.
 3. DetFuzz baseline marker payload verified.
 4. Full v0 suite and v0.1 benign fixture validation complete.
 
+## Sysmon Installation
+
+From an Administrator PowerShell after copying the repository to `C:\DetFuzz\detfuzz`:
+
+```powershell
+$sysmon = 'C:\Tools\DetFuzzSysmon\Sysmon64.exe'
+& $sysmon -accepteula -i C:\DetFuzz\detfuzz\configs\sysmon-detfuzz.xml
+Get-Service Sysmon64
+Get-WinEvent -LogName 'Microsoft-Windows-Sysmon/Operational' -MaxEvents 5
+```
+
+The project configuration records PowerShell Process Create events and enables
+SHA256 hashes, which are required by the DetFuzz telemetry and identity checks.
+
 ## Phase 2 Validation Target
 
 Run one prepared baseline command and confirm:

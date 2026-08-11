@@ -40,6 +40,7 @@ class DetectionTests(unittest.TestCase):
         for name in (
             "v0-powershell-encoded-command.sigma.yml",
             "v0-rule-dependencies.json",
+            "sysmon-detfuzz.xml",
         ):
             repository_copy = repository_root / "configs" / name
             packaged_copy = repository_root / "src" / "detfuzz" / "configs" / name
