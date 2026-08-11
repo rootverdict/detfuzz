@@ -4,7 +4,7 @@ This directory records the identity and claim boundary of the latest external
 V1 evidence package.
 
 ```text
-artifacts/detfuzz-portfolio-v1-20260811.zip
+artifacts/detfuzz-v1.0.0-release.zip
 SHA256 6d5ba268a4ad59a1732e8d15117854d7c74610736d0597d1e894d7db7b008126
 ```
 
@@ -51,7 +51,7 @@ BF2 BENIGN_ALERT
 ```powershell
 Get-FileHash `
   -Algorithm SHA256 `
-  -LiteralPath .\artifacts\detfuzz-portfolio-v1-20260811.zip
+  -LiteralPath .\artifacts\detfuzz-v1.0.0-release.zip
 ```
 
 After extraction, inspect `release-manifest.json`, the two suite reports, and

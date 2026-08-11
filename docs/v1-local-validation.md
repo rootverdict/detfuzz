@@ -2,7 +2,7 @@
 
 This record captures the final V1 end-to-end validation completed on
 2026-08-11. Raw artifacts are retained under the ignored
-`artifacts/v1-release-20260811-final/` directory and in the external portfolio
+`artifacts/detfuzz-v1.0.0-release/` directory and in the external portfolio
 archive; they are not committed to Git.
 
 ## Environment
@@ -28,7 +28,7 @@ archive; they are not committed to Git.
 - Selected telemetry-query timeout: `30s`.
 - Maximum observed telemetry-query duration: `15458 ms`.
 - Result:
-  `artifacts/v1-release-20260811-final/calibration/80ae23e4-2354-40e3-98db-819ebf2c5dd0/timeout-calibration.json`.
+  `artifacts/detfuzz-v1.0.0-release/calibration/80ae23e4-2354-40e3-98db-819ebf2c5dd0/timeout-calibration.json`.
 
 ## Detection suite
 
@@ -48,7 +48,7 @@ archive; they are not committed to Git.
 - B0 detection smoke check: `RULE_MATCHED`.
 - M1 detection smoke check: `RULE_NOT_MATCHED`.
 - Report:
-  `artifacts/v1-release-20260811-final/runs/6336eceb-29f8-420e-9cbf-570596354abc/reports/suite-report.json`.
+  `artifacts/detfuzz-v1.0.0-release/runs/6336eceb-29f8-420e-9cbf-570596354abc/reports/suite-report.json`.
 
 ## Benign fixtures
 
@@ -61,7 +61,7 @@ archive; they are not committed to Git.
 - Evidence manifest: 12 files; sizes and SHA256 hashes independently rechecked
   with zero failures.
 - Report:
-  `artifacts/v1-release-20260811-final/benign/8010ec26-0c67-4100-a4ea-324d3edd6bbe/reports/suite-report.json`.
+  `artifacts/detfuzz-v1.0.0-release/benign/8010ec26-0c67-4100-a4ea-324d3edd6bbe/reports/suite-report.json`.
 
 ## Contract and packaging
 
@@ -85,7 +85,7 @@ archive; they are not committed to Git.
 
 ## External evidence package
 
-- Archive: `artifacts/detfuzz-portfolio-v1-20260811.zip`.
+- Archive: `artifacts/detfuzz-v1.0.0-release.zip`.
 - SHA256:
   `6d5ba268a4ad59a1732e8d15117854d7c74610736d0597d1e894d7db7b008126`.
 - Archive entries: 140.
