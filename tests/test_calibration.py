@@ -76,6 +76,7 @@ class CalibrationTests(unittest.TestCase):
     def test_calibrate_timeouts_writes_output_and_selects_timeout(self) -> None:
         calls = {"count": 0}
         telemetry_timeouts = []
+        telemetry_powershell_paths = []
 
         def fake_execute(prepared, timeout_seconds=30):
             calls["count"] += 1
@@ -96,8 +97,10 @@ class CalibrationTests(unittest.TestCase):
             host,
             max_events,
             telemetry_timeout_seconds,
+            powershell_exe,
         ):
             telemetry_timeouts.append(telemetry_timeout_seconds)
+            telemetry_powershell_paths.append(powershell_exe)
             return TelemetryValidation(
                 True,
                 "TELEMETRY_COMPLETE",
@@ -123,13 +126,22 @@ class CalibrationTests(unittest.TestCase):
                 ),
                 patch("detfuzz.calibration._query_calibration_telemetry", fake_telemetry),
             ):
-                result = calibrate_timeouts(Path(root), host="DetFuzz-Win11-Lab", runs=2)
+                result = calibrate_timeouts(
+                    Path(root),
+                    host="DetFuzz-Win11-Lab",
+                    runs=2,
+                    powershell_path="C:\\Custom\\powershell.exe",
+                )
 
             self.assertEqual(result["status"], "PASS")
             self.assertEqual(result["runs_completed"], 2)
             selected = cast(dict[str, int], result["selected_timeouts_seconds"])
             self.assertEqual(selected["process"], 30)
             self.assertEqual(telemetry_timeouts, [120, 120])
+            self.assertEqual(
+                telemetry_powershell_paths,
+                ["C:\\Custom\\powershell.exe", "C:\\Custom\\powershell.exe"],
+            )
             self.assertTrue(Path(str(result["output_path"])).exists())
 
     def test_calibrate_timeouts_fails_when_telemetry_is_missing(self) -> None:
@@ -151,6 +163,7 @@ class CalibrationTests(unittest.TestCase):
             host,
             max_events,
             telemetry_timeout_seconds,
+            powershell_exe,
         ):
             return TelemetryValidation(
                 False,

@@ -1,6 +1,8 @@
 import json
+import os
 import tempfile
 import unittest
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from detfuzz.cases import V0_CASES
@@ -117,6 +119,39 @@ class MarkerOracleTests(unittest.TestCase):
 
             self.assertFalse(result.valid)
             self.assertEqual(result.reason, "MARKER_TIMESTAMP_OUTSIDE_EXECUTION_WINDOW")
+
+    def test_marker_timestamp_allows_small_filesystem_clock_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            suite = create_suite(Path(root))
+            prepared = prepare_case(suite, V0_CASES[0])
+            prepared.marker_path.write_text(
+                json.dumps(
+                    {
+                        "run_id": prepared.suite_id,
+                        "case_id": "B0",
+                        "nonce": prepared.nonce,
+                        "result": "completed",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            now = datetime.now(UTC)
+            os.utime(prepared.marker_path, (now.timestamp() + 0.5,) * 2)
+            execution = ProcessExecution(
+                case_id="B0",
+                command_line=prepared.command_line,
+                pid=100,
+                started_at_utc=(now - timedelta(seconds=1)).isoformat(),
+                ended_at_utc=now.isoformat(),
+                exit_code=0,
+                stdout="",
+                stderr="",
+            )
+
+            result = validate_marker(prepared, execution)
+
+            self.assertTrue(result.valid)
+            self.assertEqual(result.reason, "MARKER_VALID")
 
 
 if __name__ == "__main__":

@@ -173,7 +173,10 @@ def run_benign_fixtures(
             fixture,
             powershell_path=powershell_path,
         )
-        execution = execute_benign_fixture(prepared, timeout_seconds=timeout_seconds)
+        try:
+            execution = execute_benign_fixture(prepared, timeout_seconds=timeout_seconds)
+        except OSError as error:
+            execution = _failed_benign_execution(prepared, error)
         telemetry = _query_fixture_telemetry(
             prepared=prepared,
             execution=execution,
@@ -363,4 +366,20 @@ def _write_json(path: Path, payload: object) -> None:
     path.write_text(
         json.dumps(payload, indent=2, sort_keys=True, default=str),
         encoding="utf-8",
+    )
+
+def _failed_benign_execution(
+    prepared: PreparedBenignFixture,
+    error: OSError,
+) -> ProcessExecution:
+    timestamp = utc_now_iso()
+    return ProcessExecution(
+        case_id=prepared.fixture.fixture_id,
+        command_line=prepared.command_line,
+        pid=None,
+        started_at_utc=timestamp,
+        ended_at_utc=timestamp,
+        exit_code=None,
+        stdout="",
+        stderr=f"{type(error).__name__}: {error}",
     )

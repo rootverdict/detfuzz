@@ -233,5 +233,31 @@ class TelemetryTests(unittest.TestCase):
         self.assertEqual(calls["count"], 2)
 
 
+    def test_wait_for_process_create_event_reports_missing_query_executable(self) -> None:
+        def missing_runner(*args, **kwargs):
+            raise FileNotFoundError("powershell missing")
+
+        criteria = ProcessCorrelationCriteria(
+            host="DetFuzz-Win11-Lab",
+            pid=4242,
+            started_at_utc="2026-07-20T18:08:46+00:00",
+            ended_at_utc="2026-07-20T18:08:48+00:00",
+            command_fragment="-EncodedCommand",
+        )
+
+        result = wait_for_process_create_event(
+            criteria,
+            command_runner=missing_runner,
+            timeout_seconds=1,
+            poll_interval_seconds=0,
+        )
+
+        self.assertFalse(result.valid)
+        self.assertEqual(
+            result.reason,
+            "TELEMETRY_TIMEOUT:TELEMETRY_QUERY_FAILED",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

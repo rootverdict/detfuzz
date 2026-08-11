@@ -144,6 +144,7 @@ def calibrate_timeouts(
             host=host,
             max_events=max_events,
             telemetry_timeout_seconds=telemetry_probe_timeout_seconds,
+            powershell_exe=powershell_path,
         )
         telemetry_query_ended = datetime.now(UTC)
         detection_matched = _calibration_detection_matched(telemetry)
@@ -230,6 +231,7 @@ def _query_calibration_telemetry(
     host: str,
     max_events: int,
     telemetry_timeout_seconds: int,
+    powershell_exe: str = "powershell.exe",
 ) -> TelemetryValidation:
     if execution.pid is None:
         return TelemetryValidation(False, "EXECUTION_PID_MISSING")
@@ -243,6 +245,7 @@ def _query_calibration_telemetry(
     try:
         return wait_for_process_create_event(
             criteria,
+            powershell_exe=powershell_exe,
             max_events=max_events,
             timeout_seconds=telemetry_timeout_seconds,
         )

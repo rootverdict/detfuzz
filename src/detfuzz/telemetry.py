@@ -249,7 +249,7 @@ def wait_for_process_create_event(
                 max_events=max_events,
                 command_runner=command_runner,
             )
-        except RuntimeError:
+        except (OSError, RuntimeError):
             result = TelemetryValidation(False, "TELEMETRY_QUERY_FAILED")
 
         if result.event is not None:

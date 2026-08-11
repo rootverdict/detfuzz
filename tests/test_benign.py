@@ -156,5 +156,22 @@ class BenignFixtureTests(unittest.TestCase):
         self.assertIn("BENIGN_TELEMETRY_FAILURE", str(result["abort_reason"]))
 
 
+    def test_run_benign_fixtures_reports_missing_executable(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            with patch(
+                "detfuzz.benign.execute_benign_fixture",
+                side_effect=FileNotFoundError("powershell missing"),
+            ):
+                result = run_benign_fixtures(
+                    Path(root),
+                    host="DetFuzz-Win11-Lab",
+                )
+
+        fixtures = cast(list[dict[str, object]], result["fixtures"])
+        self.assertEqual(result["suite_status"], "PIPELINE_HEALTH_FAILED")
+        self.assertEqual(fixtures[0]["classification"], "BENIGN_EXECUTION_FAILED")
+        self.assertIn("BF0:BENIGN_EXECUTION_FAILED", str(result["abort_reason"]))
+
+
 if __name__ == "__main__":
     unittest.main()

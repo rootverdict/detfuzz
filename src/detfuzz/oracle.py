@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from detfuzz.models import MarkerValidation, PreparedCase, ProcessExecution
+
+MARKER_TIMESTAMP_TOLERANCE_SECONDS = 2
 
 
 def validate_marker(
@@ -61,7 +63,8 @@ def _marker_was_touched_during_execution(
     started_at = _parse_iso_utc(execution.started_at_utc)
     ended_at = _parse_iso_utc(execution.ended_at_utc)
     modified_at = datetime.fromtimestamp(marker_path.stat().st_mtime, tz=UTC)
-    return started_at <= modified_at <= ended_at
+    tolerance = timedelta(seconds=MARKER_TIMESTAMP_TOLERANCE_SECONDS)
+    return started_at - tolerance <= modified_at <= ended_at + tolerance
 
 
 def _parse_iso_utc(value: str) -> datetime:
