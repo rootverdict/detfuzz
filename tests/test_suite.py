@@ -12,7 +12,7 @@ from detfuzz.models import (
     SysmonEvent,
     TelemetryValidation,
 )
-from detfuzz.suite import _evaluate_detection, run_v0_suite
+from detfuzz.suite import _evaluate_detection, run_v1_suite
 
 
 class SuiteRunnerTests(unittest.TestCase):
@@ -41,7 +41,7 @@ class SuiteRunnerTests(unittest.TestCase):
         self.assertTrue(detection.error)
         self.assertIn("DETECTION_ENGINE_ERROR:ValueError", detection.reason)
 
-    def test_run_v0_suite_executes_all_cases_and_finalizes_candidate_bypass(self) -> None:
+    def test_run_v1_suite_executes_all_cases_and_finalizes_candidate_bypass(self) -> None:
         def fake_execute(prepared, timeout_seconds=30):
             return ProcessExecution(
                 case_id=prepared.case.case_id,
@@ -108,7 +108,7 @@ class SuiteRunnerTests(unittest.TestCase):
                 patch("detfuzz.suite._query_telemetry", fake_telemetry),
                 patch("detfuzz.suite._evaluate_detection", fake_detection),
             ):
-                result = run_v0_suite(Path(root), host="DetFuzz-Win11-Lab")
+                result = run_v1_suite(Path(root), host="DetFuzz-Win11-Lab")
 
             cases = cast(list[dict[str, object]], result["cases"])
             classifications = {
@@ -126,7 +126,7 @@ class SuiteRunnerTests(unittest.TestCase):
             reports = cast(dict[str, str], result["reports"])
             self.assertTrue(Path(reports["json_report"]).exists())
 
-    def test_run_v0_suite_aborts_when_opening_baseline_is_not_detected(self) -> None:
+    def test_run_v1_suite_aborts_when_opening_baseline_is_not_detected(self) -> None:
         def fake_execute(prepared, timeout_seconds=30):
             return ProcessExecution(
                 case_id=prepared.case.case_id,
@@ -187,7 +187,7 @@ class SuiteRunnerTests(unittest.TestCase):
                     lambda telemetry: DetectionResult("rule", False, "RULE_NOT_MATCHED"),
                 ),
             ):
-                result = run_v0_suite(Path(root), host="DetFuzz-Win11-Lab")
+                result = run_v1_suite(Path(root), host="DetFuzz-Win11-Lab")
 
             self.assertEqual(result["suite_status"], "ABORTED")
             self.assertEqual(result["abort_reason"], "OPENING_BASELINE_NOT_DETECTED")
@@ -196,19 +196,19 @@ class SuiteRunnerTests(unittest.TestCase):
                 1,
             )
 
-    def test_run_v0_suite_fails_health_when_negative_control_is_not_invalid(self) -> None:
+    def test_run_v1_suite_fails_health_when_negative_control_is_not_invalid(self) -> None:
         result = self._run_suite_with_detection_overrides({})
 
         self.assertEqual(result["suite_status"], "PIPELINE_HEALTH_FAILED")
         self.assertEqual(result["abort_reason"], "NEGATIVE_CONTROL_NOT_INVALID")
 
-    def test_run_v0_suite_fails_health_when_closing_baseline_is_not_detected(self) -> None:
+    def test_run_v1_suite_fails_health_when_closing_baseline_is_not_detected(self) -> None:
         result = self._run_suite_with_detection_overrides({"B1": False, "__nc1_invalid__": True})
 
         self.assertEqual(result["suite_status"], "PIPELINE_HEALTH_FAILED")
         self.assertEqual(result["abort_reason"], "CLOSING_BASELINE_NOT_DETECTED")
 
-    def test_run_v0_suite_writes_partial_report_on_unexpected_error(self) -> None:
+    def test_run_v1_suite_writes_partial_report_on_unexpected_error(self) -> None:
         def fail_execute(prepared, timeout_seconds=30):
             raise RuntimeError("boom")
 
@@ -221,7 +221,7 @@ class SuiteRunnerTests(unittest.TestCase):
                 patch("detfuzz.suite.expected_executable_sha256", lambda path: "ABC123"),
                 patch("detfuzz.suite.execute_prepared_case", fail_execute),
             ):
-                result = run_v0_suite(Path(root), host="DetFuzz-Win11-Lab")
+                result = run_v1_suite(Path(root), host="DetFuzz-Win11-Lab")
 
             self.assertEqual(result["suite_status"], "ABORTED")
             self.assertIn(
@@ -232,13 +232,13 @@ class SuiteRunnerTests(unittest.TestCase):
             reports = cast(dict[str, str], result["reports"])
             self.assertTrue(Path(reports["json_report"]).exists())
 
-    def test_run_v0_suite_reports_preflight_exception(self) -> None:
+    def test_run_v1_suite_reports_preflight_exception(self) -> None:
         with tempfile.TemporaryDirectory() as root:
             with patch(
                 "detfuzz.suite.run_clock_preflight",
                 side_effect=FileNotFoundError("powershell missing"),
             ):
-                result = run_v0_suite(Path(root), host="DetFuzz-Win11-Lab")
+                result = run_v1_suite(Path(root), host="DetFuzz-Win11-Lab")
 
             self.assertEqual(result["suite_status"], "PREFLIGHT_FAILED")
             self.assertIn(
@@ -377,7 +377,7 @@ class SuiteRunnerTests(unittest.TestCase):
                 patch("detfuzz.suite._query_telemetry", fake_telemetry),
                 patch("detfuzz.suite._evaluate_detection", fake_detection),
             ):
-                return run_v0_suite(root, host="DetFuzz-Win11-Lab")
+                return run_v1_suite(root, host="DetFuzz-Win11-Lab")
 
         if output_root is not None:
             return run(output_root)

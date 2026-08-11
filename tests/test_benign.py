@@ -5,7 +5,7 @@ from typing import cast
 from unittest.mock import patch
 
 from detfuzz.benign import (
-    V01_BENIGN_FIXTURES,
+    V1_BENIGN_FIXTURES,
     command_line_for_benign_fixture,
     prepare_benign_fixture,
     run_benign_fixtures,
@@ -21,7 +21,7 @@ from detfuzz.runner import create_suite
 
 class BenignFixtureTests(unittest.TestCase):
     def test_plain_fixture_uses_command_without_encoded_command(self) -> None:
-        fixture = V01_BENIGN_FIXTURES[0]
+        fixture = V1_BENIGN_FIXTURES[0]
 
         command_line, command_fragment = command_line_for_benign_fixture(fixture)
 
@@ -30,7 +30,7 @@ class BenignFixtureTests(unittest.TestCase):
         self.assertEqual(command_fragment, "-Command")
 
     def test_encoded_fixture_uses_encoded_command(self) -> None:
-        fixture = V01_BENIGN_FIXTURES[1]
+        fixture = V1_BENIGN_FIXTURES[1]
 
         command_line, command_fragment = command_line_for_benign_fixture(fixture)
 
@@ -40,7 +40,7 @@ class BenignFixtureTests(unittest.TestCase):
     def test_prepare_benign_fixture_creates_exact_fixture_path(self) -> None:
         with tempfile.TemporaryDirectory() as root:
             suite = create_suite(Path(root))
-            prepared = prepare_benign_fixture(suite, V01_BENIGN_FIXTURES[0])
+            prepared = prepare_benign_fixture(suite, V1_BENIGN_FIXTURES[0])
 
             self.assertEqual(prepared.fixture.fixture_id, "BF0")
             self.assertEqual(prepared.fixture_path, suite.suite_path / "BF0")

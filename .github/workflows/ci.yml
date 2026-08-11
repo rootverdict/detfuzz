@@ -27,5 +27,8 @@ jobs:
       - name: Smoke-test CLI and packaged contract
         shell: pwsh
         run: |
+          python -m detfuzz.cli --version
           python -m detfuzz.cli simulate-report
           python -m detfuzz.cli export-contract --output artifacts/contract.json
+      - name: Build wheel
+        run: python -m pip wheel --no-deps . --wheel-dir artifacts/wheel

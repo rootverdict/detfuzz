@@ -6,12 +6,12 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
-from detfuzz.cases import V0_CASES
+from detfuzz.cases import V1_CASES
 from detfuzz.models import CaseSpec, PreparedCase, ProcessExecution, SuiteContext
-from detfuzz.mutations import build_v0_command
+from detfuzz.mutations import build_v1_command
 from detfuzz.payloads import encode_powershell_command, marker_payload
 
-ALLOWED_CASE_IDS = {case.case_id for case in V0_CASES}
+ALLOWED_CASE_IDS = {case.case_id for case in V1_CASES}
 
 
 def utc_now_iso() -> str:
@@ -69,7 +69,7 @@ def command_line_for_case(
     powershell_path: str = "powershell.exe",
 ) -> str:
     quoted_exe = quote_windows_arg(powershell_path)
-    return build_v0_command(case.case_id, quoted_exe, encoded_payload)
+    return build_v1_command(case.case_id, quoted_exe, encoded_payload)
 
 
 def execute_prepared_case(

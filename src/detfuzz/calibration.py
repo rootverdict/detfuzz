@@ -7,8 +7,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from statistics import median
 
-from detfuzz.cases import V0_CASES
-from detfuzz.detection import V0_ENCODED_POWERSHELL_RULE, evaluate_detection_rule
+from detfuzz.cases import V1_CASES
+from detfuzz.detection import V1_ENCODED_POWERSHELL_RULE, evaluate_detection_rule
 from detfuzz.models import (
     ProcessCorrelationCriteria,
     ProcessExecution,
@@ -125,7 +125,7 @@ def calibrate_timeouts(
         raise ValueError("max_events must be positive")
 
     suite = create_suite(output_root)
-    baseline = next(case for case in V0_CASES if case.case_id == "B0")
+    baseline = next(case for case in V1_CASES if case.case_id == "B0")
     observations: list[dict[str, object]] = []
 
     for index in range(1, runs + 1):
@@ -256,7 +256,7 @@ def _query_calibration_telemetry(
 def _calibration_detection_matched(telemetry: TelemetryValidation) -> bool:
     if not telemetry.valid or telemetry.event is None:
         return False
-    return evaluate_detection_rule(V0_ENCODED_POWERSHELL_RULE, telemetry.event).matched
+    return evaluate_detection_rule(V1_ENCODED_POWERSHELL_RULE, telemetry.event).matched
 
 
 def _query_time_sync_status(

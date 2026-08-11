@@ -6,20 +6,21 @@ from dataclasses import asdict
 from pathlib import Path
 
 from detfuzz.benign import (
-    V01_BENIGN_FIXTURES,
+    V1_BENIGN_FIXTURES,
     prepare_benign_fixture,
     run_benign_fixtures,
 )
 from detfuzz.calibration import calibrate_timeouts, run_clock_preflight
-from detfuzz.cases import V0_CASES
+from detfuzz.cases import V1_CASES
 from detfuzz.classifier import classify_case, finalize_candidate
 from detfuzz.contract import export_suite_report_schema
-from detfuzz.detection import V0_ENCODED_POWERSHELL_RULE, evaluate_detection_rule
+from detfuzz.detection import V1_ENCODED_POWERSHELL_RULE, evaluate_detection_rule
 from detfuzz.models import CaseObservation, ProcessCorrelationCriteria
 from detfuzz.report import result_to_json, write_report_bundle
 from detfuzz.runner import create_suite, prepare_case
-from detfuzz.suite import run_v0_suite
+from detfuzz.suite import run_v1_suite
 from detfuzz.telemetry import parse_sysmon_event_xml, query_and_correlate_process_create
+from detfuzz.version import __version__
 
 SIMULATION_NOTE = "SIMULATED - not from a real run"
 PREPARED_ONLY_NOTE = "PHASE_2_PREPARED_ONLY - commands generated but not executed"
@@ -33,7 +34,7 @@ def simulated_observation(case_id: str) -> CaseObservation:
 
 
 def simulate_report() -> None:
-    observations = [simulated_observation(case.case_id) for case in V0_CASES]
+    observations = [simulated_observation(case.case_id) for case in V1_CASES]
     classified = {
         observation.case_id: classify_case(observation) for observation in observations
     }
@@ -47,7 +48,7 @@ def simulate_report() -> None:
 def prepare_suite(root: Path, powershell_path: str) -> None:
     suite = create_suite(root)
     prepared_cases = [
-        prepare_case(suite, case, powershell_path=powershell_path) for case in V0_CASES
+        prepare_case(suite, case, powershell_path=powershell_path) for case in V1_CASES
     ]
     payload = {
         "note": PREPARED_ONLY_NOTE,
@@ -73,7 +74,7 @@ def prepare_benign_fixtures(root: Path, powershell_path: str) -> None:
     suite = create_suite(root)
     prepared_fixtures = [
         prepare_benign_fixture(suite, fixture, powershell_path=powershell_path)
-        for fixture in V01_BENIGN_FIXTURES
+        for fixture in V1_BENIGN_FIXTURES
     ]
     payload = {
         "note": PREPARED_ONLY_NOTE,
@@ -85,7 +86,7 @@ def prepare_benign_fixtures(root: Path, powershell_path: str) -> None:
                 "description": prepared.fixture.description,
                 "invocation": prepared.fixture.invocation,
                 "fixture_path": str(prepared.fixture_path),
-                "predicted_v0_rule_match": prepared.fixture.predicted_v0_rule_match,
+                "predicted_v1_rule_match": prepared.fixture.predicted_v1_rule_match,
                 "command_line": prepared.command_line,
             }
             for prepared in prepared_fixtures
@@ -116,7 +117,7 @@ def validate_telemetry(args: argparse.Namespace) -> None:
 
 def evaluate_detection(args: argparse.Namespace) -> None:
     event = parse_sysmon_event_xml(args.xml.read_text(encoding="utf-8"))
-    result = evaluate_detection_rule(V0_ENCODED_POWERSHELL_RULE, event)
+    result = evaluate_detection_rule(V1_ENCODED_POWERSHELL_RULE, event)
     print(json.dumps(asdict(result), indent=2, sort_keys=True))
 
 
@@ -127,7 +128,7 @@ def build_report(args: argparse.Namespace) -> None:
 
 
 def run_suite(args: argparse.Namespace) -> None:
-    result = run_v0_suite(
+    result = run_v1_suite(
         output_root=args.output_root,
         host=args.host,
         powershell_path=args.powershell_path,
@@ -184,6 +185,11 @@ def export_contract(args: argparse.Namespace) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="detfuzz")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
     subcommands = parser.add_subparsers(dest="command")
 
     subcommands.add_parser(
@@ -193,7 +199,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     prepare = subcommands.add_parser(
         "prepare-suite",
-        help="Create v0 case directories and print allow-listed PowerShell commands.",
+        help="Create V1 case directories and print allow-listed PowerShell commands.",
     )
     prepare.add_argument(
         "--root",
@@ -209,7 +215,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     benign_prepare = subcommands.add_parser(
         "prepare-benign-fixtures",
-        help="Create v0.1 benign fixture directories and print safe commands.",
+        help="Create V1 benign fixture directories and print safe commands.",
     )
     benign_prepare.add_argument(
         "--root",
@@ -268,7 +274,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     detection = subcommands.add_parser(
         "evaluate-detection",
-        help="Evaluate the v0 detection rule against a saved Sysmon XML event.",
+        help="Evaluate the V1 detection rule against a saved Sysmon XML event.",
     )
     detection.add_argument(
         "--xml",
@@ -302,7 +308,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     suite = subcommands.add_parser(
         "run-suite",
-        help="Run the full DetFuzz v0 sequence and write evidence reports.",
+        help="Run the full DetFuzz V1 sequence and write evidence reports.",
     )
     suite.add_argument(
         "--output-root",
@@ -398,7 +404,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     benign = subcommands.add_parser(
         "run-benign-fixtures",
-        help="Run v0.1 benign PowerShell fixtures and report benign alerts.",
+        help="Run V1 benign PowerShell fixtures and report benign alerts.",
     )
     benign.add_argument(
         "--output-root",

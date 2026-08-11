@@ -5,7 +5,7 @@ import unittest
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from detfuzz.cases import V0_CASES
+from detfuzz.cases import V1_CASES
 from detfuzz.models import ProcessExecution
 from detfuzz.oracle import validate_marker
 from detfuzz.runner import create_suite, prepare_case
@@ -15,7 +15,7 @@ class MarkerOracleTests(unittest.TestCase):
     def test_valid_marker_passes_exact_content_check(self) -> None:
         with tempfile.TemporaryDirectory() as root:
             suite = create_suite(Path(root))
-            prepared = prepare_case(suite, V0_CASES[0])
+            prepared = prepare_case(suite, V1_CASES[0])
             prepared.marker_path.write_text(
                 json.dumps(
                     {
@@ -36,7 +36,7 @@ class MarkerOracleTests(unittest.TestCase):
     def test_missing_expected_marker_fails(self) -> None:
         with tempfile.TemporaryDirectory() as root:
             suite = create_suite(Path(root))
-            prepared = prepare_case(suite, V0_CASES[0])
+            prepared = prepare_case(suite, V1_CASES[0])
 
             result = validate_marker(prepared)
 
@@ -44,7 +44,7 @@ class MarkerOracleTests(unittest.TestCase):
             self.assertEqual(result.reason, "MARKER_MISSING")
 
     def test_negative_control_without_marker_passes(self) -> None:
-        nc1 = next(case for case in V0_CASES if case.case_id == "NC1")
+        nc1 = next(case for case in V1_CASES if case.case_id == "NC1")
 
         with tempfile.TemporaryDirectory() as root:
             suite = create_suite(Path(root))
@@ -56,7 +56,7 @@ class MarkerOracleTests(unittest.TestCase):
             self.assertEqual(result.reason, "MARKER_ABSENT_AS_EXPECTED")
 
     def test_unexpected_negative_control_marker_fails(self) -> None:
-        nc1 = next(case for case in V0_CASES if case.case_id == "NC1")
+        nc1 = next(case for case in V1_CASES if case.case_id == "NC1")
 
         with tempfile.TemporaryDirectory() as root:
             suite = create_suite(Path(root))
@@ -71,7 +71,7 @@ class MarkerOracleTests(unittest.TestCase):
     def test_nonce_mismatch_fails(self) -> None:
         with tempfile.TemporaryDirectory() as root:
             suite = create_suite(Path(root))
-            prepared = prepare_case(suite, V0_CASES[0])
+            prepared = prepare_case(suite, V1_CASES[0])
             prepared.marker_path.write_text(
                 json.dumps(
                     {
@@ -92,7 +92,7 @@ class MarkerOracleTests(unittest.TestCase):
     def test_marker_timestamp_must_be_inside_execution_window(self) -> None:
         with tempfile.TemporaryDirectory() as root:
             suite = create_suite(Path(root))
-            prepared = prepare_case(suite, V0_CASES[0])
+            prepared = prepare_case(suite, V1_CASES[0])
             prepared.marker_path.write_text(
                 json.dumps(
                     {
@@ -123,7 +123,7 @@ class MarkerOracleTests(unittest.TestCase):
     def test_marker_timestamp_allows_small_filesystem_clock_drift(self) -> None:
         with tempfile.TemporaryDirectory() as root:
             suite = create_suite(Path(root))
-            prepared = prepare_case(suite, V0_CASES[0])
+            prepared = prepare_case(suite, V1_CASES[0])
             prepared.marker_path.write_text(
                 json.dumps(
                     {

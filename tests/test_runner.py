@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from detfuzz.cases import V0_CASES
+from detfuzz.cases import V1_CASES
 from detfuzz.models import CaseKind, CaseSpec
 from detfuzz.mutations import MUTATION_OPERATORS
 from detfuzz.payloads import encode_powershell_command, marker_payload
@@ -44,18 +44,18 @@ class RunnerPreparationTests(unittest.TestCase):
     def test_prepare_case_creates_exact_case_path_and_marker_path(self) -> None:
         with tempfile.TemporaryDirectory() as root:
             suite = create_suite(Path(root))
-            prepared = prepare_case(suite, V0_CASES[1])
+            prepared = prepare_case(suite, V1_CASES[1])
 
             self.assertEqual(prepared.case.case_id, "M1")
             self.assertEqual(prepared.case_path, suite.suite_path / "M1")
             self.assertEqual(prepared.marker_path, prepared.case_path / "effect.json")
             self.assertTrue(prepared.case_path.exists())
 
-    def test_every_v0_case_builds_an_allow_listed_command(self) -> None:
+    def test_every_v1_case_builds_an_allow_listed_command(self) -> None:
         with tempfile.TemporaryDirectory() as root:
             suite = create_suite(Path(root))
 
-            for case in V0_CASES:
+            for case in V1_CASES:
                 prepared = prepare_case(suite, case)
                 self.assertTrue(prepared.command_line.startswith("powershell.exe "))
                 self.assertIn("-NoProfile", prepared.command_line)
@@ -63,7 +63,7 @@ class RunnerPreparationTests(unittest.TestCase):
 
     def test_mutation_inventory_has_one_operator_per_mutation_case(self) -> None:
         mutation_ids = {
-            case.case_id for case in V0_CASES if case.kind == CaseKind.MUTATION
+            case.case_id for case in V1_CASES if case.kind == CaseKind.MUTATION
         }
 
         self.assertEqual(set(MUTATION_OPERATORS), mutation_ids)
@@ -71,14 +71,14 @@ class RunnerPreparationTests(unittest.TestCase):
     def test_mutations_preserve_the_encoded_payload(self) -> None:
         with tempfile.TemporaryDirectory() as root:
             suite = create_suite(Path(root))
-            for case in V0_CASES:
+            for case in V1_CASES:
                 if case.kind != CaseKind.MUTATION:
                     continue
                 prepared = prepare_case(suite, case)
                 self.assertIn(prepared.encoded_payload, prepared.command_line)
 
     def test_negative_control_uses_invalid_base64_and_expects_no_marker(self) -> None:
-        nc1 = next(case for case in V0_CASES if case.case_id == "NC1")
+        nc1 = next(case for case in V1_CASES if case.case_id == "NC1")
 
         with tempfile.TemporaryDirectory() as root:
             suite = create_suite(Path(root))
@@ -91,7 +91,7 @@ class RunnerPreparationTests(unittest.TestCase):
         rogue = CaseSpec(
             case_id="ROGUE",
             kind=CaseKind.MUTATION,
-            transformation="not part of v0",
+            transformation="not part of V1",
             expected_marker=True,
         )
 

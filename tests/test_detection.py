@@ -3,8 +3,8 @@ import unittest
 from pathlib import Path
 
 from detfuzz.detection import (
-    V0_ENCODED_POWERSHELL_RULE,
-    V0_SIGMA_RULE_PATH,
+    V1_ENCODED_POWERSHELL_RULE,
+    V1_SIGMA_RULE_PATH,
     evaluate_detection_rule,
     extract_rule_dependencies_from_sigma_dict,
     load_detection_rule_from_sigma,
@@ -35,11 +35,31 @@ SAMPLE_EVENT = """\
 
 
 class DetectionTests(unittest.TestCase):
+    def test_packaged_config_inventory_is_v1_only(self) -> None:
+        repository_root = Path(__file__).resolve().parents[1]
+        expected = {
+            "sysmon-detfuzz.xml",
+            "v1-powershell-encoded-command.sigma.yml",
+            "v1-rule-dependencies.json",
+        }
+
+        self.assertEqual(
+            {path.name for path in (repository_root / "configs").iterdir()},
+            expected,
+        )
+        self.assertEqual(
+            {
+                path.name
+                for path in (repository_root / "src" / "detfuzz" / "configs").iterdir()
+            },
+            expected,
+        )
+
     def test_repository_config_mirrors_match_packaged_configs(self) -> None:
         repository_root = Path(__file__).resolve().parents[1]
         for name in (
-            "v0-powershell-encoded-command.sigma.yml",
-            "v0-rule-dependencies.json",
+            "v1-powershell-encoded-command.sigma.yml",
+            "v1-rule-dependencies.json",
             "sysmon-detfuzz.xml",
         ):
             repository_copy = repository_root / "configs" / name
@@ -50,20 +70,20 @@ class DetectionTests(unittest.TestCase):
                 f"{name} must be updated in both config locations",
             )
 
-    def test_v0_rule_matches_encoded_command_event(self) -> None:
+    def test_v1_rule_matches_encoded_command_event(self) -> None:
         event = parse_sysmon_event_xml(SAMPLE_EVENT)
 
-        result = evaluate_detection_rule(V0_ENCODED_POWERSHELL_RULE, event)
+        result = evaluate_detection_rule(V1_ENCODED_POWERSHELL_RULE, event)
 
         self.assertTrue(result.matched)
         self.assertEqual(result.reason, "RULE_MATCHED")
 
-    def test_v0_rule_does_not_match_alias_only_command(self) -> None:
+    def test_v1_rule_does_not_match_alias_only_command(self) -> None:
         event = parse_sysmon_event_xml(
             SAMPLE_EVENT.replace("-EncodedCommand", "-enc")
         )
 
-        result = evaluate_detection_rule(V0_ENCODED_POWERSHELL_RULE, event)
+        result = evaluate_detection_rule(V1_ENCODED_POWERSHELL_RULE, event)
 
         self.assertFalse(result.matched)
         self.assertEqual(result.reason, "RULE_NOT_MATCHED")
@@ -99,12 +119,12 @@ class DetectionTests(unittest.TestCase):
             self.skipTest("pySigma is not installed")
 
         rule = load_detection_rule_from_sigma(
-            V0_SIGMA_RULE_PATH,
+            V1_SIGMA_RULE_PATH,
             allow_parser_fallback=False,
         )
 
         self.assertEqual(rule.rule_id, "d4f8c4e4-984d-4f5f-9f6c-1cc6b37f2f62")
-        self.assertEqual(rule.slug, "detfuzz-v0-powershell-encoded-command")
+        self.assertEqual(rule.slug, "detfuzz-v1-powershell-encoded-command")
 
 
 if __name__ == "__main__":

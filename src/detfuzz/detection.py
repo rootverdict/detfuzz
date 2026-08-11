@@ -5,10 +5,10 @@ from typing import Any
 
 from detfuzz.models import DetectionResult, DetectionRule, RuleDependency, SysmonEvent
 
-V0_SIGMA_RULE_PATH = (
+V1_SIGMA_RULE_PATH = (
     Path(__file__).resolve().parent
     / "configs"
-    / "v0-powershell-encoded-command.sigma.yml"
+    / "v1-powershell-encoded-command.sigma.yml"
 )
 
 
@@ -124,7 +124,7 @@ def _sigma_collection_to_dict(sigma_collection: object, path: Path) -> dict[str,
             return first.to_dict()
 
     # pySigma has already parsed the file at this point. The fallback keeps the
-    # local v0 dependency extraction small and deterministic across pySigma
+    # local V1 dependency extraction small and deterministic across pySigma
     # versions with different object APIs.
     return _load_minimal_sigma_yaml(path)
 
@@ -185,7 +185,7 @@ def _dependency_from_sigma_field(field_expression: str, value: object) -> RuleDe
 
     if isinstance(value, list):
         if len(value) != 1:
-            raise ValueError("v0 dependency extraction expects one value per field")
+            raise ValueError("V1 dependency extraction expects one value per field")
         value = value[0]
 
     return RuleDependency(field=field, operator=operator, value=str(value))
@@ -195,4 +195,4 @@ def _dependency_key(dependency: RuleDependency) -> str:
     return f"{dependency.field}|{dependency.operator}|{dependency.value}"
 
 
-V0_ENCODED_POWERSHELL_RULE = load_detection_rule_from_sigma(V0_SIGMA_RULE_PATH)
+V1_ENCODED_POWERSHELL_RULE = load_detection_rule_from_sigma(V1_SIGMA_RULE_PATH)

@@ -58,7 +58,7 @@ MUTATION_OPERATORS: dict[str, MutationOperator] = {
 }
 
 
-def build_v0_command(
+def build_v1_command(
     case_id: str,
     executable: str,
     encoded_payload: str,

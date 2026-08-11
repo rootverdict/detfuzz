@@ -4,7 +4,7 @@ from detfuzz.models import CaseObservation, Classification
 
 
 def classify_case(observation: CaseObservation) -> Classification:
-    """Classify one case using the DetFuzz v0 decision model."""
+    """Classify one case using the DetFuzz V1 decision model."""
     if observation.infrastructure_error:
         return Classification.INFRASTRUCTURE_ERROR
 

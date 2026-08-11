@@ -3,11 +3,16 @@ param(
     [string]$HostName = "DetFuzz-Win11-Lab",
     [string]$RunOutputRoot = "C:\DetFuzz\runs",
     [string]$CalibrationOutputRoot = "C:\DetFuzz\calibration",
+    [string]$BenignOutputRoot = "C:\DetFuzz\benign",
+    [string]$ContractOutput = "C:\DetFuzz\contracts\detfuzz-suite-report-1.0.schema.json",
     [int]$CalibrationRuns = 20,
     [int]$MaxEvents = 5000,
     [string]$CalibrationResult = "",
     [switch]$SkipCalibration,
-    [switch]$RunSuite
+    [switch]$RunSuite,
+    [switch]$RunBenignFixtures,
+    [switch]$ExportContract,
+    [switch]$RunAll
 )
 
 $ErrorActionPreference = "Stop"
@@ -32,7 +37,11 @@ Write-Host "== Clock preflight =="
 python -m detfuzz.cli clock-preflight
 Assert-NativeSuccess "Clock preflight"
 
-if (-not $SkipCalibration) {
+$shouldRunSuite = $RunSuite -or $RunAll
+$shouldRunBenign = $RunBenignFixtures -or $RunAll
+$shouldExportContract = $ExportContract -or $RunAll
+
+if ($shouldRunSuite -and -not $SkipCalibration) {
     Write-Host ""
     Write-Host "== Timeout calibration =="
     $calibrationOutput = python -m detfuzz.cli calibrate-timeouts `
@@ -49,9 +58,9 @@ if (-not $SkipCalibration) {
     $CalibrationResult = $calibration.output_path
 }
 
-if ($RunSuite) {
+if ($shouldRunSuite) {
     Write-Host ""
-    Write-Host "== Full v0 suite =="
+    Write-Host "== Full V1 suite =="
     $suiteArgs = @(
         "-m", "detfuzz.cli", "run-suite",
         "--output-root", $RunOutputRoot,
@@ -63,7 +72,26 @@ if ($RunSuite) {
     }
     python @suiteArgs
     Assert-NativeSuccess "DetFuzz suite"
-} else {
+}
+
+if ($shouldRunBenign) {
     Write-Host ""
-    Write-Host "Full suite not run. Re-run with -RunSuite when ready."
+    Write-Host "== V1 benign fixtures =="
+    python -m detfuzz.cli run-benign-fixtures `
+        --output-root $BenignOutputRoot `
+        --host $HostName `
+        --max-events $MaxEvents
+    Assert-NativeSuccess "DetFuzz benign fixtures"
+}
+
+if ($shouldExportContract) {
+    Write-Host ""
+    Write-Host "== V1 report contract =="
+    python -m detfuzz.cli export-contract --output $ContractOutput
+    Assert-NativeSuccess "DetFuzz contract export"
+}
+
+if (-not $shouldRunSuite -and -not $shouldRunBenign -and -not $shouldExportContract) {
+    Write-Host ""
+    Write-Host "No workflow selected. Re-run with -RunAll for the complete V1 demo."
 }

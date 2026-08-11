@@ -7,11 +7,11 @@ from pathlib import Path
 from typing import Any
 
 from detfuzz.calibration import run_clock_preflight
-from detfuzz.cases import V0_CASES
+from detfuzz.cases import V1_CASES
 from detfuzz.classifier import classify_case, finalize_candidate
 from detfuzz.detection import (
-    V0_ENCODED_POWERSHELL_RULE,
-    V0_SIGMA_RULE_PATH,
+    V1_ENCODED_POWERSHELL_RULE,
+    V1_SIGMA_RULE_PATH,
     evaluate_detection_rule,
 )
 from detfuzz.identity import expected_executable_sha256, validate_executable_identity
@@ -32,7 +32,7 @@ from detfuzz.runner import create_suite, execute_prepared_case, prepare_case
 from detfuzz.telemetry import wait_for_process_create_event
 
 
-def run_v0_suite(
+def run_v1_suite(
     output_root: Path,
     host: str,
     powershell_path: str = "powershell.exe",
@@ -87,7 +87,7 @@ def run_v0_suite(
         abort_reason = "EXPECTED_EXECUTABLE_HASH_UNAVAILABLE"
     else:
         try:
-            for case in V0_CASES:
+            for case in V1_CASES:
                 prepared = prepare_case(suite, case, powershell_path=powershell_path)
                 execution = execute_prepared_case(prepared, timeout_seconds=timeout_seconds)
                 marker = validate_marker(prepared, execution)
@@ -158,9 +158,9 @@ def run_v0_suite(
         "environment": {
             "host": host,
             "telemetry": "Microsoft-Windows-Sysmon/Operational",
-            "rule_id": V0_ENCODED_POWERSHELL_RULE.rule_id,
-            "rule_slug": V0_ENCODED_POWERSHELL_RULE.slug,
-            "rule_source": str(V0_SIGMA_RULE_PATH),
+            "rule_id": V1_ENCODED_POWERSHELL_RULE.rule_id,
+            "rule_slug": V1_ENCODED_POWERSHELL_RULE.slug,
+            "rule_source": str(V1_SIGMA_RULE_PATH),
             "expected_powershell_sha256": expected_hash,
             "preflight": preflight,
             "calibration": calibration,
@@ -229,10 +229,10 @@ def _evaluate_detection(telemetry: TelemetryValidation) -> DetectionResult | Non
     if not telemetry.valid or telemetry.event is None:
         return None
     try:
-        return evaluate_detection_rule(V0_ENCODED_POWERSHELL_RULE, telemetry.event)
+        return evaluate_detection_rule(V1_ENCODED_POWERSHELL_RULE, telemetry.event)
     except Exception as error:  # noqa: BLE001 - classification preserves the failure.
         return DetectionResult(
-            rule_id=V0_ENCODED_POWERSHELL_RULE.rule_id,
+            rule_id=V1_ENCODED_POWERSHELL_RULE.rule_id,
             matched=False,
             reason=f"DETECTION_ENGINE_ERROR:{type(error).__name__}:{error}",
             error=True,

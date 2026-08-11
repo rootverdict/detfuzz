@@ -4,10 +4,22 @@ import io
 import unittest
 from unittest.mock import patch
 
-from detfuzz.cli import clock_preflight, run_benign, run_suite
+from detfuzz.cli import clock_preflight, main, run_benign, run_suite
 
 
 class CliExitStatusTests(unittest.TestCase):
+    def test_version_reports_v1_release(self) -> None:
+        stdout = io.StringIO()
+        with (
+            patch("sys.argv", ["detfuzz", "--version"]),
+            contextlib.redirect_stdout(stdout),
+            self.assertRaises(SystemExit) as raised,
+        ):
+            main()
+
+        self.assertEqual(raised.exception.code, 0)
+        self.assertEqual(stdout.getvalue().strip(), "detfuzz 1.0.0")
+
     def test_failed_clock_preflight_exits_nonzero(self) -> None:
         args = argparse.Namespace(powershell_path="powershell.exe")
 
@@ -36,7 +48,7 @@ class CliExitStatusTests(unittest.TestCase):
 
         with (
             patch(
-                "detfuzz.cli.run_v0_suite",
+                "detfuzz.cli.run_v1_suite",
                 return_value={"suite_status": "ABORTED"},
             ),
             contextlib.redirect_stdout(io.StringIO()),
