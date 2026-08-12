@@ -5,7 +5,7 @@ V1 evidence package.
 
 ```text
 artifacts/detfuzz-v1.0.0-release.zip
-SHA256 6d5ba268a4ad59a1732e8d15117854d7c74610736d0597d1e894d7db7b008126
+SHA256 f5e4fb1aa40f2c6ca3245fc874b1d5c408315413b36000997b6b37f4259ba562
 ```
 
 The archive is intentionally ignored by Git. A source clone cannot independently
@@ -16,10 +16,11 @@ delivery channel and verify its SHA256 first.
 
 - DetFuzz package: `1.0.0`.
 - Rule slug: `detfuzz-v1-powershell-encoded-command`.
-- Calibration suite: `80ae23e4-2354-40e3-98db-819ebf2c5dd0`, `PASS`, 20/20
+- Validated: 2026-08-12.
+- Calibration suite: `cc192eec-015c-4691-a0ff-e3b3d6f2f2fb`, `PASS`, 20/20
   runs.
-- Detection suite: `6336eceb-29f8-420e-9cbf-570596354abc`, `COMPLETED`.
-- Benign suite: `8010ec26-0c67-4100-a4ea-324d3edd6bbe`, `COMPLETED`.
+- Detection suite: `914304ea-8723-45c2-a35e-4a1bbfde9e38`, `COMPLETED`.
+- Benign suite: `f291323f-f0af-4120-8031-32e8a8b01d57`, `COMPLETED`.
 - Detection evidence: 63 files, zero hash or size failures.
 - Benign evidence: 12 files, zero hash or size failures.
 - Contract export and clean wheel.

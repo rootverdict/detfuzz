@@ -35,7 +35,7 @@ rule-resilience finding, not a claim that the fixture is malicious.
 
 ## V1 status
 
-V1 is complete and locally verified on 2026-08-11 with the pinned development
+V1 is complete and locally verified on 2026-08-12 with the pinned development
 toolchain.
 
 The latest end-to-end run produced:
@@ -76,6 +76,12 @@ See [`docs/v1-local-validation.md`](docs/v1-local-validation.md) and
 - Sysmon64 installed and running with Process Create events enabled and
   SHA256 hashing configured. The repository includes the recommended config at
   [`configs/sysmon-detfuzz.xml`](configs/sysmon-detfuzz.xml).
+- The Windows Time service (`W32Time`) running, because clock preflight calls
+  `w32tm /query /status`. The service often ships with `Manual` startup; start
+  it with `Start-Service W32Time` from an elevated session if preflight reports
+  `TIME_SYNC_STATUS_QUERY_FAILED`.
+- An elevated session, because reading the Sysmon operational channel requires
+  Administrator rights.
 - `pySigma==1.4.0`; the pinned development tools are listed in
   [`constraints.txt`](constraints.txt).
 
