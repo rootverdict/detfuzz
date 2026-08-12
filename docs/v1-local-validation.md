@@ -84,6 +84,11 @@ absorbed the change without operator intervention.
   `d74c34e4018807b0293c56a99f24976667096b33972225e72bbd1fc646bc3ac5`.
 - Wheel contains 27 entries, all required V1 configs and contract resources,
   and zero legacy config entries.
+- Isolated wheel installation imports version `1.0.0` successfully.
+- Packaged resources load from the isolated installation: the contract hashes
+  to the canonical digest above, and `detfuzz/configs` contains exactly
+  `sysmon-detfuzz.xml`, `v1-powershell-encoded-command.sigma.yml`, and
+  `v1-rule-dependencies.json`.
 
 ## Code quality
 
@@ -91,6 +96,7 @@ absorbed the change without operator intervention.
   skipped because pySigma is installed.
 - Ruff: all checks passed.
 - mypy: no issues found in 31 source files.
+- PowerShell demo helper: parser validation passed.
 
 ## External evidence package
 
