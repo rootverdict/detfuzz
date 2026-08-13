@@ -31,7 +31,10 @@ line-length = 100
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+# BLE enforces the blind-except policy the three `# noqa: BLE001` directives in
+# suite.py document; without it those directives suppress nothing. RUF adds
+# RUF100, which fails the build if a `noqa` ever goes stale that way again.
+select = ["E", "F", "I", "UP", "B", "BLE", "RUF"]
 
 [tool.mypy]
 python_version = "3.11"

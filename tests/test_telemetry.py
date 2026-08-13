@@ -232,7 +232,6 @@ class TelemetryTests(unittest.TestCase):
         self.assertTrue(result.valid)
         self.assertEqual(calls["count"], 2)
 
-
     def test_wait_for_process_create_event_reports_missing_query_executable(self) -> None:
         def missing_runner(*args, **kwargs):
             raise FileNotFoundError("powershell missing")

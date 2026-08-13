@@ -368,6 +368,7 @@ def _write_json(path: Path, payload: object) -> None:
         encoding="utf-8",
     )
 
+
 def _failed_benign_execution(
     prepared: PreparedBenignFixture,
     error: OSError,

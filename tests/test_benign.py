@@ -155,7 +155,6 @@ class BenignFixtureTests(unittest.TestCase):
         self.assertEqual(result["suite_status"], "PIPELINE_HEALTH_FAILED")
         self.assertIn("BENIGN_TELEMETRY_FAILURE", str(result["abort_reason"]))
 
-
     def test_run_benign_fixtures_reports_missing_executable(self) -> None:
         with tempfile.TemporaryDirectory() as root:
             with patch(

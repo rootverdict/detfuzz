@@ -141,7 +141,6 @@ def calibrate_timeouts(
 
         telemetry_query_started = datetime.now(UTC)
         telemetry = _query_calibration_telemetry(
-            prepared_case_id="B0",
             execution=execution,
             host=host,
             max_events=max_events,
@@ -228,7 +227,6 @@ def calibrate_timeouts(
 
 
 def _query_calibration_telemetry(
-    prepared_case_id: str,
     execution: ProcessExecution,
     host: str,
     max_events: int,
@@ -242,6 +240,9 @@ def _query_calibration_telemetry(
         pid=execution.pid,
         started_at_utc=execution.started_at_utc,
         ended_at_utc=execution.ended_at_utc,
+        # Calibration only ever repeats the B0 baseline, whose command line
+        # carries the full -EncodedCommand spelling. Mutation fragments (-enc
+        # for M1) are the suite runner's concern, not this path's.
         command_fragment="EncodedCommand",
     )
     try:

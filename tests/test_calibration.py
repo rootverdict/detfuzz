@@ -122,7 +122,6 @@ class CalibrationTests(unittest.TestCase):
             )
 
         def fake_telemetry(
-            prepared_case_id,
             execution,
             host,
             max_events,
@@ -188,7 +187,6 @@ class CalibrationTests(unittest.TestCase):
             )
 
         def fake_query(
-            prepared_case_id,
             execution,
             host,
             max_events,
