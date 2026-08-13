@@ -16,6 +16,7 @@ from detfuzz.detection import (
 )
 from detfuzz.identity import expected_executable_sha256, validate_executable_identity
 from detfuzz.models import (
+    CaseKind,
     CaseObservation,
     Classification,
     DetectionResult,
@@ -296,6 +297,7 @@ def _case_record(
         "expected_executable_sha256": identity.expected_sha256,
         "observed_executable_sha256": identity.observed_sha256,
         "detection_matched": None if detection is None else detection.matched,
+        "detection_engine_error": None if detection is None else detection.error,
         "rule_id": None if detection is None else detection.rule_id,
         "detection_reason": "NOT_EVALUATED" if detection is None else detection.reason,
     }
@@ -362,11 +364,63 @@ def _command_fragment_for_case(case_id: str) -> str:
 
 
 def _suite_health(cases: list[dict[str, object]]) -> tuple[str, str | None]:
+    case_ids = [str(case.get("case_id", "")) for case in cases]
+    expected_ids = {case.case_id for case in V1_CASES}
+    observed_ids = set(case_ids)
+    if len(case_ids) != len(observed_ids):
+        return "PIPELINE_HEALTH_FAILED", "CASE_INVENTORY_DUPLICATE"
+    if observed_ids != expected_ids:
+        missing = ",".join(sorted(expected_ids - observed_ids)) or "none"
+        unexpected = ",".join(sorted(observed_ids - expected_ids)) or "none"
+        return (
+            "PIPELINE_HEALTH_FAILED",
+            f"CASE_INVENTORY_MISMATCH:missing={missing}:unexpected={unexpected}",
+        )
+
     by_id = {str(case["case_id"]): case for case in cases}
+    for case_id in case_ids:
+        record = by_id[case_id]
+        for field in (
+            "marker_valid",
+            "telemetry_valid",
+            "executable_identity_valid",
+        ):
+            if record.get(field) is not True:
+                return (
+                    "PIPELINE_HEALTH_FAILED",
+                    f"CASE_PIPELINE_INCOMPLETE:{case_id}:{field}",
+                )
+        if not isinstance(record.get("detection_matched"), bool):
+            return (
+                "PIPELINE_HEALTH_FAILED",
+                f"CASE_PIPELINE_INCOMPLETE:{case_id}:detection_matched",
+            )
+        if record.get("detection_engine_error") is not False:
+            return (
+                "PIPELINE_HEALTH_FAILED",
+                f"CASE_PIPELINE_INCOMPLETE:{case_id}:detection_engine_error",
+            )
+
+    if by_id.get("B0", {}).get("classification") != Classification.DETECTED.value:
+        return "PIPELINE_HEALTH_FAILED", "OPENING_BASELINE_NOT_DETECTED"
     if by_id.get("NC1", {}).get("classification") != Classification.INVALID_MUTANT.value:
         return "PIPELINE_HEALTH_FAILED", "NEGATIVE_CONTROL_NOT_INVALID"
     if by_id.get("B1", {}).get("classification") != Classification.DETECTED.value:
         return "PIPELINE_HEALTH_FAILED", "CLOSING_BASELINE_NOT_DETECTED"
+
+    healthy_mutation_results = {
+        Classification.DETECTED.value,
+        Classification.VALID_BYPASS.value,
+    }
+    for case in V1_CASES:
+        if case.kind != CaseKind.MUTATION:
+            continue
+        classification = str(by_id[case.case_id].get("classification", ""))
+        if classification not in healthy_mutation_results:
+            return (
+                "PIPELINE_HEALTH_FAILED",
+                f"CASE_UNHEALTHY:{case.case_id}:{classification or 'MISSING'}",
+            )
     return "COMPLETED", None
 
 

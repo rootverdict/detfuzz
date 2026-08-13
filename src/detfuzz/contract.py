@@ -191,6 +191,7 @@ def _validate_optional_case_fields(case: dict[str, Any], index: int) -> None:
         "telemetry_valid",
         "executable_identity_valid",
         "detection_matched",
+        "detection_engine_error",
     ):
         value = case.get(field)
         if field in case and value is not None and not isinstance(value, bool):

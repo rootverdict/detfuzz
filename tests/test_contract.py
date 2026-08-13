@@ -1,4 +1,5 @@
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -21,6 +22,25 @@ class SuiteReportContractTests(unittest.TestCase):
             schema["properties"]["schema_version"]["const"],
             SUITE_REPORT_SCHEMA_VERSION,
         )
+
+    def test_packaged_schema_rejects_unsafe_windows_and_posix_paths(self) -> None:
+        schema = load_suite_report_schema()
+        pattern = schema["$defs"]["evidenceFile"]["properties"]["path"]["pattern"]
+
+        for unsafe_path in (
+            "../outside.txt",
+            r"..\outside.txt",
+            r"sub\..\outside.txt",
+            r"\absolute.txt",
+            "/absolute.txt",
+            "C:outside.txt",
+        ):
+            with self.subTest(path=unsafe_path):
+                self.assertIsNone(re.search(pattern, unsafe_path))
+
+        for safe_path in ("event.xml", "B0/event.xml", r"B0\event.xml"):
+            with self.subTest(path=safe_path):
+                self.assertIsNotNone(re.search(pattern, safe_path))
 
     def test_export_contract_copies_valid_json_schema(self) -> None:
         with tempfile.TemporaryDirectory() as root:

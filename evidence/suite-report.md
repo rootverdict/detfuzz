@@ -4,11 +4,11 @@
 > committed; verify the external archive recorded in `evidence/README.md`
 > before relying on this result.
 
-Suite ID: `914304ea-8723-45c2-a35e-4a1bbfde9e38`
+Suite ID: `33874ec6-bda3-472f-b7e3-0d0437c00c0c`
 
 Suite status: `COMPLETED`
 
-Generated UTC: `2026-08-12T04:08:59.469861+00:00`
+Generated UTC: `2026-08-13T09:24:00.739700+00:00`
 
 Rule: `detfuzz-v1-powershell-encoded-command`
 
@@ -43,5 +43,5 @@ Case count: `8`
 Canonical raw report inside the external package:
 
 ```text
-runs/914304ea-8723-45c2-a35e-4a1bbfde9e38/reports/suite-report.json
+runs/33874ec6-bda3-472f-b7e3-0d0437c00c0c/reports/suite-report.json
 ```

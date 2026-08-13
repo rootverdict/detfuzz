@@ -12,7 +12,8 @@ python -m detfuzz.cli clock-preflight
 
 The command queries Windows time status and compares local UTC sources. It
 returns nonzero unless status is `PASS`; an absolute offset greater than 2000 ms
-fails preflight.
+fails preflight. Time synchronization status is parsed fail-closed: missing or
+unrecognized `w32tm` status fields also fail preflight.
 
 ## Timeout calibration
 

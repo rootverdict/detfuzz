@@ -4,8 +4,8 @@ This directory records the identity and claim boundary of the latest external
 V1 evidence package.
 
 ```text
-artifacts/detfuzz-v1.0.0-release.zip
-SHA256 f5e4fb1aa40f2c6ca3245fc874b1d5c408315413b36000997b6b37f4259ba562
+artifacts/detfuzz-v1.0.1-release.zip
+SHA256 5feae77e09e35323cf4a9384f7efc3353e61416714d5a8a86923b7f5a2e331ab
 ```
 
 The archive is intentionally ignored by Git. A source clone cannot independently
@@ -14,13 +14,13 @@ delivery channel and verify its SHA256 first.
 
 ## Included validation
 
-- DetFuzz package: `1.0.0`.
+- DetFuzz package: `1.0.1`.
 - Rule slug: `detfuzz-v1-powershell-encoded-command`.
-- Validated: 2026-08-12.
-- Calibration suite: `cc192eec-015c-4691-a0ff-e3b3d6f2f2fb`, `PASS`, 20/20
+- Validated: 2026-08-13.
+- Calibration suite: `1ec64ed5-fd14-4788-9b94-a052996450e8`, `PASS`, 20/20
   runs.
-- Detection suite: `914304ea-8723-45c2-a35e-4a1bbfde9e38`, `COMPLETED`.
-- Benign suite: `f291323f-f0af-4120-8031-32e8a8b01d57`, `COMPLETED`.
+- Detection suite: `33874ec6-bda3-472f-b7e3-0d0437c00c0c`, `COMPLETED`.
+- Benign suite: `eb23c7b3-bf13-446b-940e-0eaae8d029c3`, `COMPLETED`.
 - Detection evidence: 63 files, zero hash or size failures.
 - Benign evidence: 12 files, zero hash or size failures.
 - Contract export and clean wheel.
@@ -52,7 +52,7 @@ BF2 BENIGN_ALERT
 ```powershell
 Get-FileHash `
   -Algorithm SHA256 `
-  -LiteralPath .\artifacts\detfuzz-v1.0.0-release.zip
+  -LiteralPath .\artifacts\detfuzz-v1.0.1-release.zip
 ```
 
 After extraction, inspect `release-manifest.json`, the two suite reports, and

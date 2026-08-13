@@ -35,8 +35,10 @@ rule-resilience finding, not a claim that the fixture is malicious.
 
 ## V1 status
 
-V1 is complete and locally verified on 2026-08-12 with the pinned development
-toolchain.
+V1.0.1 is complete and locally verified on 2026-08-13 with the pinned
+development toolchain. It adds fail-closed suite-health, clock-status, and
+report-contract hardening while preserving the same deliberately narrow V1
+experiment.
 
 The latest end-to-end run produced:
 
@@ -249,7 +251,7 @@ python -m unittest discover -s tests
 The current verified result is:
 
 ```text
-87 tests run; 86 passed and 1 expected dependency-path test skipped
+95 tests run; 94 passed and 1 expected dependency-path test skipped
 Ruff: all checks passed
 mypy: no issues found
 ```

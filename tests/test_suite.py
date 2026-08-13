@@ -12,7 +12,7 @@ from detfuzz.models import (
     SysmonEvent,
     TelemetryValidation,
 )
-from detfuzz.suite import _evaluate_detection, run_v1_suite
+from detfuzz.suite import _evaluate_detection, _suite_health, run_v1_suite
 
 
 class SuiteRunnerTests(unittest.TestCase):
@@ -208,6 +208,51 @@ class SuiteRunnerTests(unittest.TestCase):
         self.assertEqual(result["suite_status"], "PIPELINE_HEALTH_FAILED")
         self.assertEqual(result["abort_reason"], "CLOSING_BASELINE_NOT_DETECTED")
 
+    def test_suite_health_fails_when_any_case_has_incomplete_telemetry(self) -> None:
+        records = self._healthy_case_records()
+        mutation = next(record for record in records if record["case_id"] == "M2")
+        mutation["classification"] = "TELEMETRY_FAILURE"
+        mutation["telemetry_valid"] = False
+
+        status, reason = _suite_health(records)
+
+        self.assertEqual(status, "PIPELINE_HEALTH_FAILED")
+        self.assertEqual(reason, "CASE_PIPELINE_INCOMPLETE:M2:telemetry_valid")
+
+    def test_suite_health_fails_when_mutation_classification_is_unhealthy(self) -> None:
+        records = self._healthy_case_records()
+        mutation = next(record for record in records if record["case_id"] == "M2")
+        mutation["classification"] = "DETECTION_ENGINE_ERROR"
+
+        status, reason = _suite_health(records)
+
+        self.assertEqual(status, "PIPELINE_HEALTH_FAILED")
+        self.assertEqual(reason, "CASE_UNHEALTHY:M2:DETECTION_ENGINE_ERROR")
+
+    def test_suite_health_does_not_mask_negative_control_detection_error(self) -> None:
+        records = self._healthy_case_records()
+        negative_control = next(
+            record for record in records if record["case_id"] == "NC1"
+        )
+        negative_control["detection_engine_error"] = True
+
+        status, reason = _suite_health(records)
+
+        self.assertEqual(status, "PIPELINE_HEALTH_FAILED")
+        self.assertEqual(
+            reason,
+            "CASE_PIPELINE_INCOMPLETE:NC1:detection_engine_error",
+        )
+
+    def test_suite_health_requires_the_exact_v1_case_inventory(self) -> None:
+        records = self._healthy_case_records()
+        records.pop()
+
+        status, reason = _suite_health(records)
+
+        self.assertEqual(status, "PIPELINE_HEALTH_FAILED")
+        self.assertEqual(reason, "CASE_INVENTORY_MISMATCH:missing=B1:unexpected=none")
+
     def test_run_v1_suite_writes_partial_report_on_unexpected_error(self) -> None:
         def fail_execute(prepared, timeout_seconds=30):
             raise RuntimeError("boom")
@@ -383,6 +428,31 @@ class SuiteRunnerTests(unittest.TestCase):
             return run(output_root)
         with tempfile.TemporaryDirectory() as root:
             return run(Path(root))
+
+    @staticmethod
+    def _healthy_case_records() -> list[dict[str, object]]:
+        classifications = {
+            "B0": "DETECTED",
+            "M1": "VALID_BYPASS",
+            "M2": "DETECTED",
+            "M3": "DETECTED",
+            "M4": "DETECTED",
+            "M5": "DETECTED",
+            "NC1": "INVALID_MUTANT",
+            "B1": "DETECTED",
+        }
+        return [
+            {
+                "case_id": case_id,
+                "classification": classification,
+                "marker_valid": True,
+                "telemetry_valid": True,
+                "executable_identity_valid": True,
+                "detection_matched": classification != "VALID_BYPASS",
+                "detection_engine_error": False,
+            }
+            for case_id, classification in classifications.items()
+        ]
 
 
 if __name__ == "__main__":

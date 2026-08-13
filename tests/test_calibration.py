@@ -5,7 +5,11 @@ from pathlib import Path
 from typing import cast
 from unittest.mock import patch
 
-from detfuzz.calibration import calibrate_timeouts, run_clock_preflight
+from detfuzz.calibration import (
+    _selected_timeout_seconds,
+    calibrate_timeouts,
+    run_clock_preflight,
+)
 from detfuzz.models import MarkerValidation, ProcessExecution, SysmonEvent, TelemetryValidation
 
 
@@ -72,6 +76,32 @@ class CalibrationTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "PREFLIGHT_FAILED")
         self.assertIn("CLOCK_QUERY_ERROR:FileNotFoundError", str(result["reason"]))
+
+    def test_clock_preflight_fails_closed_on_unrecognized_sync_status(self) -> None:
+        def fake_runner(*args, **kwargs):
+            command = args[0]
+            if "w32tm /query /status" in command:
+                return subprocess.CompletedProcess(
+                    args=args,
+                    returncode=0,
+                    stdout="",
+                    stderr="",
+                )
+            return subprocess.CompletedProcess(
+                args=args,
+                returncode=0,
+                stdout="2026-07-21T00:00:00+00:00",
+                stderr="",
+            )
+
+        result = run_clock_preflight(command_runner=fake_runner)
+
+        self.assertEqual(result["status"], "PREFLIGHT_FAILED")
+        self.assertEqual(result["reason"], "TIME_SYNC_STATUS_UNRECOGNIZED")
+
+    def test_selected_timeout_rounds_observed_milliseconds_up(self) -> None:
+        self.assertEqual(_selected_timeout_seconds([36_500]), 47)
+        self.assertEqual(_selected_timeout_seconds([36_000]), 46)
 
     def test_calibrate_timeouts_writes_output_and_selects_timeout(self) -> None:
         calls = {"count": 0}

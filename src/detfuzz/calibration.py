@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from collections.abc import Callable
 from datetime import UTC, datetime
+from math import ceil
 from pathlib import Path
 from statistics import median
 
@@ -283,16 +285,29 @@ def _query_time_sync_status(
         }
     stdout = completed.stdout
     source = _extract_w32tm_source(stdout)
-    if "Leap Indicator: 3" in stdout or "not synchronized" in stdout.lower():
+    leap_indicator = _extract_w32tm_leap_indicator(stdout)
+    if leap_indicator == 3 or "not synchronized" in stdout.lower():
         return {
             "synchronized": False,
             "reason": "TIME_SYNC_NOT_SYNCHRONIZED",
             "source": source,
         }
-    if source == "Local CMOS Clock":
+    if source is None or leap_indicator is None:
+        return {
+            "synchronized": False,
+            "reason": "TIME_SYNC_STATUS_UNRECOGNIZED",
+            "source": source,
+        }
+    if source.casefold() == "local cmos clock":
         return {
             "synchronized": False,
             "reason": "TIME_SYNC_LOCAL_CMOS_CLOCK",
+            "source": source,
+        }
+    if source.casefold() == "free-running system clock":
+        return {
+            "synchronized": False,
+            "reason": "TIME_SYNC_FREE_RUNNING_CLOCK",
             "source": source,
         }
     return {"synchronized": True, "reason": "TIME_SYNC_OK", "source": source}
@@ -300,9 +315,21 @@ def _query_time_sync_status(
 
 def _extract_w32tm_source(stdout: str) -> str | None:
     for line in stdout.splitlines():
-        if line.startswith("Source:"):
-            return line.split(":", 1)[1].strip()
+        match = re.match(r"^\s*Source\s*:\s*(.+?)\s*$", line, flags=re.IGNORECASE)
+        if match:
+            return match.group(1)
     return None
+
+
+def _extract_w32tm_leap_indicator(stdout: str) -> int | None:
+    match = re.search(
+        r"^\s*Leap Indicator\s*:\s*([0-3])\b",
+        stdout,
+        flags=re.IGNORECASE | re.MULTILINE,
+    )
+    if match is None:
+        return None
+    return int(match.group(1))
 
 
 def _duration_ms(started: str, ended: str) -> int:
@@ -325,7 +352,7 @@ def _telemetry_latency_ms(
 def _selected_timeout_seconds(values: list[int]) -> int:
     if not values:
         return MAXIMUM_STABLE_TIMEOUT_SECONDS
-    return max(30, int(max(values) / 1000) + 10)
+    return max(30, ceil(max(values) / 1000) + 10)
 
 
 def _integer_measurements(

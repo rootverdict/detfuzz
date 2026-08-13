@@ -190,7 +190,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="version",
         version=f"%(prog)s {__version__}",
     )
-    subcommands = parser.add_subparsers(dest="command")
+    subcommands = parser.add_subparsers(dest="command", required=True)
 
     subcommands.add_parser(
         "simulate-report",
@@ -455,7 +455,7 @@ def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
 
-    if args.command in {None, "simulate-report"}:
+    if args.command == "simulate-report":
         simulate_report()
         return
 

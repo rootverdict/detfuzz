@@ -80,6 +80,7 @@
         "telemetry_valid": { "type": ["boolean", "null"] },
         "executable_identity_valid": { "type": ["boolean", "null"] },
         "detection_matched": { "type": ["boolean", "null"] },
+        "detection_engine_error": { "type": ["boolean", "null"] },
         "rule_id": { "type": ["string", "null"] },
         "detection_reason": { "type": "string" }
       },
@@ -92,7 +93,7 @@
         "path": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^(?![A-Za-z]:|/|.*(?:^|/)\\.\\.(?:/|$)).+$"
+          "pattern": "^(?![A-Za-z]:|[/\\\\])(?!(?:.*[/\\\\])?\\.\\.(?:[/\\\\]|$)).+$"
         },
         "size_bytes": {
           "type": "integer",
