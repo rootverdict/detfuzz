@@ -64,9 +64,14 @@ telemetry. The detection run produced a 63-file SHA256 evidence manifest; the
 benign run produced a 12-file manifest. Timeout calibration passed all 20 of
 20 baseline runs, and contract export passed.
 
-The raw run directories are intentionally ignored by Git. Keep them with the
-external evidence package when the VM result needs to be independently
-reviewed; a source clone alone cannot prove a historical Windows telemetry run.
+The release bundle is committed as `artifacts/detfuzz-v1.0.1-release.zip`, with
+its digest pinned in `artifacts/detfuzz-v1.0.1-release.sha256.txt`, so a clone
+carries the evidence these results rest on. Extracted run directories and
+intermediate build output stay ignored by Git.
+
+Verifying those hashes shows the bundle is internally consistent and unmodified
+relative to its recorded manifest. It does not authenticate the producer or the
+host, and a clone alone cannot prove a historical Windows telemetry run.
 See [`docs/v1-local-validation.md`](docs/v1-local-validation.md) and
 [`docs/evidence-checklist.md`](docs/evidence-checklist.md).
 
@@ -251,10 +256,15 @@ python -m unittest discover -s tests
 The current verified result is:
 
 ```text
-95 tests run; 94 passed and 1 expected dependency-path test skipped
+98 tests run; 97 passed and 1 expected dependency-path test skipped
 Ruff: all checks passed
-mypy: no issues found
+mypy: no issues found in 31 source files
 ```
+
+The v1.0.1 release was validated at 95 tests; the three additional tests cover
+the DOCTYPE rejection added after that release. `docs/v1-local-validation.md`
+and the release manifest retain the 95/94 figures deliberately, as a
+point-in-time record of the validated run rather than a claim about this tree.
 
 ## V1 boundary
 

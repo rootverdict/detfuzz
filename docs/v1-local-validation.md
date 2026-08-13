@@ -1,9 +1,13 @@
 # DetFuzz V1 Local Validation
 
 This record captures the latest V1 end-to-end validation completed on
-2026-08-13. Raw artifacts are retained under the ignored
-`artifacts/detfuzz-v1.0.1-release/` directory and in the external portfolio
-archive; they are not committed to Git.
+2026-08-13. It is a point-in-time record: the figures below describe the tree
+that was validated, and they are deliberately not revised as the repository
+moves on.
+
+The release bundle is committed as `artifacts/detfuzz-v1.0.1-release.zip`, with
+its digest pinned in `artifacts/detfuzz-v1.0.1-release.sha256.txt`. The
+extracted `artifacts/detfuzz-v1.0.1-release/` directory stays ignored by Git.
 
 ## Environment
 
@@ -97,21 +101,28 @@ to the next whole second before adding the full `10s` safety margin. The final
 - mypy: no issues found in 31 source files.
 - PowerShell demo helper: parser validation passed.
 
-## External evidence package
+## Evidence package
 
-- Archive: `artifacts/detfuzz-v1.0.1-release.zip`.
-- SHA256:
+- Archive: `artifacts/detfuzz-v1.0.1-release.zip`, committed to Git.
+- SHA256 as packed on the validation host, 2026-08-13:
   `5feae77e09e35323cf4a9384f7efc3353e61416714d5a8a86923b7f5a2e331ab`.
+- SHA256 of the committed archive:
+  `7b9a5a56ce9fc383640b50b75da21278ee7d1340de2a9b390779c9f5527e2e38`.
 - Archive entries: 114 files.
 - Legacy or temporary entries: 0.
+
+The two digests differ because the bundle was repacked when the artifacts were
+consolidated and committed. Verify against
+`artifacts/detfuzz-v1.0.1-release.sha256.txt`, which pins the committed archive
+and is the authoritative reference; the first digest is retained as history.
 
 The archive stores files only; empty per-case working directories are not
 retained because every marker and telemetry artifact is copied into the
 `evidence/` tree that the manifest hashes.
 
 The source repository records these identities and results but cannot prove the
-historical Windows run without the external archive. Recompute the archive and
-evidence-manifest hashes before relying on the result.
+historical Windows run on its own. Recompute the archive and evidence-manifest
+hashes before relying on the result.
 
 ## Reproducibility
 
