@@ -117,7 +117,9 @@ def execute_benign_fixture(
     timeout_seconds: int = 30,
 ) -> ProcessExecution:
     started_at = utc_now_iso()
-    process = subprocess.Popen(
+    # No shell=True, and the command line comes from the fixed allow-listed
+    # benign fixture inventory rather than from user input.
+    process = subprocess.Popen(  # noqa: S603
         prepared.command_line,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

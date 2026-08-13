@@ -34,7 +34,10 @@ target-version = "py311"
 # BLE enforces the blind-except policy the three `# noqa: BLE001` directives in
 # suite.py document; without it those directives suppress nothing. RUF adds
 # RUF100, which fails the build if a `noqa` ever goes stale that way again.
-select = ["E", "F", "I", "UP", "B", "BLE", "RUF"]
+# S (flake8-bandit) is on because this is security tooling: every subprocess
+# call and XML parse must be either fixed or carry a written justification, so a
+# new unreviewed one cannot land silently.
+select = ["E", "F", "I", "UP", "B", "BLE", "RUF", "S"]
 
 [tool.mypy]
 python_version = "3.11"

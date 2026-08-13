@@ -7,5 +7,10 @@ build/
 .ruff_cache/
 .mypy_cache/
 dist/
+# The release bundle is committed as .zip + .sha256.txt so the evidence this
+# project's claims rest on is actually reachable from a clone. Extractions and
+# intermediate build output are not tracked, matching SignalBudget's convention.
 artifacts/*
 !artifacts/.gitkeep
+!artifacts/detfuzz-v*-release.zip
+!artifacts/detfuzz-v*-release.sha256.txt

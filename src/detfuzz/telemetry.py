@@ -26,9 +26,25 @@ REQUIRED_PROCESS_CREATE_FIELDS = (
 )
 
 
+def _reject_doctype(xml_text: str) -> None:
+    """Refuse XML carrying a DTD before it reaches the parser.
+
+    ``xml.etree`` expands internal entities, so a DOCTYPE is the entry point for
+    entity-expansion denial of service (billion laughs). Sysmon event XML never
+    carries a DTD, and a literal ``<!DOCTYPE`` cannot appear in element text
+    because ``<`` must be escaped there, so rejecting it outright has no false
+    positives. This closes the exposure without taking a ``defusedxml``
+    dependency, which matters because ``evaluate-detection`` parses a Sysmon XML
+    file supplied by the caller.
+    """
+    if "<!doctype" in xml_text.lower():
+        raise ValueError("XML must not contain a DOCTYPE declaration")
+
+
 def parse_sysmon_event_xml(xml_text: str) -> SysmonEvent:
     stripped_xml = xml_text.strip()
-    root = ET.fromstring(stripped_xml)
+    _reject_doctype(stripped_xml)
+    root = ET.fromstring(stripped_xml)  # noqa: S314 - DTD rejected above.
     namespace = _namespace(root.tag)
 
     def system_text(name: str) -> str:
@@ -66,12 +82,16 @@ def parse_sysmon_event_xml_many(xml_text: str) -> list[SysmonEvent]:
     if not stripped:
         return []
 
+    _reject_doctype(stripped)
+
     try:
         return [parse_sysmon_event_xml(stripped)]
     except ET.ParseError:
         pass
 
-    wrapped = ET.fromstring(f"<Events>{stripped}</Events>")
+    wrapped = ET.fromstring(  # noqa: S314 - DTD rejected above.
+        f"<Events>{stripped}</Events>"
+    )
     return [
         parse_sysmon_event_xml(ET.tostring(child, encoding="unicode"))
         for child in list(wrapped)

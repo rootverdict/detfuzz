@@ -77,7 +77,9 @@ def execute_prepared_case(
     timeout_seconds: int = 30,
 ) -> ProcessExecution:
     started_at = utc_now_iso()
-    process = subprocess.Popen(
+    # No shell=True, and the command line is built by build_v1_command from an
+    # allow-listed case ID rather than from user input.
+    process = subprocess.Popen(  # noqa: S603
         prepared.command_line,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

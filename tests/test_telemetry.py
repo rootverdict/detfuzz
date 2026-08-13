@@ -257,6 +257,42 @@ class TelemetryTests(unittest.TestCase):
             "TELEMETRY_TIMEOUT:TELEMETRY_QUERY_FAILED",
         )
 
+    def test_parse_sysmon_event_xml_rejects_entity_expansion(self) -> None:
+        """xml.etree expands internal entities, so a DTD must never be parsed.
+
+        Verified against the real vector rather than a string check: without the
+        DOCTYPE guard this payload parses and &c; expands to 1000 characters,
+        which is the first three levels of a billion-laughs amplification.
+        """
+        billion_laughs = (
+            '<?xml version="1.0"?>\n'
+            "<!DOCTYPE lolz [\n"
+            ' <!ENTITY a "AAAAAAAAAA">\n'
+            ' <!ENTITY b "&a;&a;&a;&a;&a;&a;&a;&a;&a;&a;">\n'
+            ' <!ENTITY c "&b;&b;&b;&b;&b;&b;&b;&b;&b;&b;">\n'
+            "]>\n"
+            "<Event><Data>&c;</Data></Event>"
+        )
+
+        for parse in (parse_sysmon_event_xml, parse_sysmon_event_xml_many):
+            with self.subTest(parser=parse.__name__):
+                with self.assertRaises(ValueError) as raised:
+                    parse(billion_laughs)
+                self.assertIn("DOCTYPE", str(raised.exception))
+
+    def test_parse_sysmon_event_xml_rejects_doctype_case_insensitively(self) -> None:
+        for spelling in ("<!DOCTYPE", "<!doctype", "<!DocType"):
+            with self.subTest(spelling=spelling):
+                with self.assertRaises(ValueError):
+                    parse_sysmon_event_xml(f'{spelling} Event [] >\n<Event />')
+
+    def test_parse_sysmon_event_xml_still_accepts_normal_events(self) -> None:
+        """The guard must not reject legitimate Sysmon telemetry."""
+        event = parse_sysmon_event_xml(SAMPLE_SYSMON_XML)
+
+        self.assertEqual(event.event_id, 1)
+        self.assertEqual(len(parse_sysmon_event_xml_many(SAMPLE_SYSMON_XML)), 1)
+
 
 if __name__ == "__main__":
     unittest.main()
