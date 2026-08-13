@@ -1,8 +1,8 @@
 # DetFuzz V1 Evidence Snapshot
 
-> This tracked file is a navigation summary. The raw evidence files are not
-> committed; verify the external archive recorded in `evidence/README.md`
-> before relying on this result.
+> This tracked file is a navigation summary. The raw evidence files live in the
+> committed archive recorded in `evidence/README.md`; verify its SHA256 and
+> recompute the evidence hashes before relying on this result.
 
 Suite ID: `33874ec6-bda3-472f-b7e3-0d0437c00c0c`
 
@@ -40,7 +40,7 @@ Case count: `8`
 - B0 standalone evaluation: `RULE_MATCHED`.
 - M1 standalone evaluation: `RULE_NOT_MATCHED`.
 
-Canonical raw report inside the external package:
+Canonical raw report inside the committed package:
 
 ```text
 runs/33874ec6-bda3-472f-b7e3-0d0437c00c0c/reports/suite-report.json

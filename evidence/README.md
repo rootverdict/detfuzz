@@ -1,16 +1,21 @@
 # DetFuzz V1 Evidence
 
-This directory records the identity and claim boundary of the latest external
-V1 evidence package.
+This directory records the identity and claim boundary of the committed V1
+evidence package.
 
 ```text
 artifacts/detfuzz-v1.0.1-release.zip
-SHA256 5feae77e09e35323cf4a9384f7efc3353e61416714d5a8a86923b7f5a2e331ab
+SHA256 7b9a5a56ce9fc383640b50b75da21278ee7d1340de2a9b390779c9f5527e2e38
 ```
 
-The archive is intentionally ignored by Git. A source clone cannot independently
-prove the Windows telemetry run; obtain the archive through the portfolio
-delivery channel and verify its SHA256 first.
+The archive is tracked in Git alongside
+`artifacts/detfuzz-v1.0.1-release.sha256.txt`, so a clone carries the evidence
+these claims rest on. Extractions and intermediate build output stay ignored.
+
+A clone still cannot independently prove the Windows telemetry run. The hashes
+establish that the bundle is internally consistent and unmodified relative to its
+recorded manifest; they do not authenticate the producer or the host, because
+DetFuzz computes them for its own output.
 
 ## Included validation
 
@@ -54,6 +59,9 @@ Get-FileHash `
   -Algorithm SHA256 `
   -LiteralPath .\artifacts\detfuzz-v1.0.1-release.zip
 ```
+
+Compare the result with `artifacts/detfuzz-v1.0.1-release.sha256.txt`, which is
+committed beside the archive and is the authoritative pin.
 
 After extraction, inspect `release-manifest.json`, the two suite reports, and
 their evidence manifests. Recompute every evidence-file hash before treating
