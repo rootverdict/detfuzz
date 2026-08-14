@@ -47,5 +47,11 @@ Use this checklist before packaging or presenting a DetFuzz run.
 ## Claim boundary
 
 Markdown summaries are navigation aids, not independent proof. Keep the raw
-suite, calibration, benign, telemetry, and manifest files in the external
-portfolio package so another reviewer can recompute every hash.
+suite, calibration, benign, telemetry, and manifest files with the release
+bundle so another reviewer can recompute every hash. The v1.0.1 bundle is
+committed as `artifacts/detfuzz-v1.0.1-release.zip`, with its digest pinned in
+`artifacts/detfuzz-v1.0.1-release.sha256.txt`.
+
+Recomputing those hashes shows the bundle is internally consistent and
+unmodified relative to its recorded manifest. It does not authenticate the
+producer or the host.

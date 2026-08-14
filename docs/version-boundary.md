@@ -49,7 +49,8 @@ V1 is done when:
 - every evidence-manifest entry can be rehashed successfully;
 - contract export and packaged-resource checks pass;
 - README and demo instructions match the implemented CLI;
-- raw evidence is retained outside Git with an explicit claim boundary.
+- raw evidence is retained with an explicit claim boundary, and the release
+  bundle is committed with a pinned digest.
 
 ## Outside V1
 

@@ -48,7 +48,7 @@ $env:PYTHONPATH = "$PWD\src"
 - `run-suite` writes a complete V1 report and evidence manifest.
 - `run-benign-fixtures` writes a complete benign report and evidence manifest.
 - `export-contract` writes the canonical schema.
-- Raw evidence is retained outside the source archive.
+- Raw evidence is retained with the release bundle and its pinned digest.
 
 Take a clean VM snapshot after installation and another after the complete V1
 workflow has been validated.
