@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import xml.etree.ElementTree as ET
 from dataclasses import asdict
 from pathlib import Path
 
@@ -116,7 +117,21 @@ def validate_telemetry(args: argparse.Namespace) -> None:
 
 
 def evaluate_detection(args: argparse.Namespace) -> None:
-    event = parse_sysmon_event_xml(args.xml.read_text(encoding="utf-8"))
+    try:
+        event = parse_sysmon_event_xml(args.xml.read_text(encoding="utf-8"))
+    except (ValueError, ET.ParseError) as error:
+        print(
+            json.dumps(
+                {
+                    "error": "XML_PARSE_FAILED",
+                    "reason": f"{type(error).__name__}: {error}",
+                    "path": str(args.xml),
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        raise SystemExit(1) from error
     result = evaluate_detection_rule(V1_ENCODED_POWERSHELL_RULE, event)
     print(json.dumps(asdict(result), indent=2, sort_keys=True))
 

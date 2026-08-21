@@ -53,7 +53,13 @@ def parse_sysmon_event_xml(xml_text: str) -> SysmonEvent:
 
     provider_node = root.find(f"./{namespace}System/{namespace}Provider")
     provider = "" if provider_node is None else provider_node.attrib.get("Name", "")
-    event_id = int(system_text("EventID"))
+    # A well-formed but non-Sysmon document may carry a missing or non-numeric
+    # EventID. Fall back to a sentinel rather than raising, so the correlation
+    # layer classifies it as WRONG_EVENT_ID instead of crashing the caller.
+    try:
+        event_id = int(system_text("EventID"))
+    except ValueError:
+        event_id = -1
 
     time_node = root.find(f"./{namespace}System/{namespace}TimeCreated")
     utc_time = "" if time_node is None else time_node.attrib.get("SystemTime", "")
@@ -269,7 +275,7 @@ def wait_for_process_create_event(
                 max_events=max_events,
                 command_runner=command_runner,
             )
-        except (OSError, RuntimeError):
+        except (OSError, RuntimeError, ET.ParseError):
             result = TelemetryValidation(False, "TELEMETRY_QUERY_FAILED")
 
         if result.event is not None:

@@ -207,7 +207,7 @@ def calibrate_timeouts(
         "host": host,
         "status": "PASS" if stable else "CALIBRATION_FAILED",
         "reason": "CALIBRATION_HEALTHY" if stable else "CALIBRATION_HEALTH_CHECK_FAILED",
-        "selection_method": "max(30s, observed_max + 10s)",
+        "selection_method": "max(30s, ceil(observed_max_ms / 1000) + 10s)",
         "maximum_stable_timeout_seconds": MAXIMUM_STABLE_TIMEOUT_SECONDS,
         "telemetry_probe_timeout_seconds": telemetry_probe_timeout_seconds,
         "process_duration_ms": _summary(process_values),

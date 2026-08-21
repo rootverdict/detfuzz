@@ -206,7 +206,9 @@ class TelemetryTests(unittest.TestCase):
 
         def fake_runner(*args, **kwargs):
             calls["count"] += 1
-            stdout = "" if calls["count"] == 1 else SAMPLE_SYSMON_XML
+            # First poll returns malformed XML; the loop must tolerate the
+            # ParseError and retry rather than crash, then correlate on retry.
+            stdout = "<broken><" if calls["count"] == 1 else SAMPLE_SYSMON_XML
             return subprocess.CompletedProcess(
                 args=args,
                 returncode=0,
@@ -292,6 +294,12 @@ class TelemetryTests(unittest.TestCase):
 
         self.assertEqual(event.event_id, 1)
         self.assertEqual(len(parse_sysmon_event_xml_many(SAMPLE_SYSMON_XML)), 1)
+
+        # A well-formed but non-Sysmon document with no numeric EventID must not
+        # crash the parser; it falls back to the -1 sentinel and is later
+        # rejected as WRONG_EVENT_ID by validation.
+        no_event_id = parse_sysmon_event_xml("<Event><System /></Event>")
+        self.assertEqual(no_event_id.event_id, -1)
 
 
 if __name__ == "__main__":
