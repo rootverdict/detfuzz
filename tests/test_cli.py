@@ -33,7 +33,7 @@ class CliExitStatusTests(unittest.TestCase):
             main()
 
         self.assertEqual(raised.exception.code, 0)
-        self.assertEqual(stdout.getvalue().strip(), "detfuzz 1.0.1")
+        self.assertEqual(stdout.getvalue().strip(), "detfuzz 1.0.2")
 
     def test_failed_clock_preflight_exits_nonzero(self) -> None:
         args = argparse.Namespace(powershell_path="powershell.exe")

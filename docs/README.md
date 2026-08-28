@@ -12,6 +12,8 @@ documentation for DetFuzz V1.
   validated finding.
 - [`v1-local-validation.md`](v1-local-validation.md): latest live Windows
   validation record.
+- [`v1.0.2-maintenance-release.md`](v1.0.2-maintenance-release.md): current
+  maintenance-release changes and their validation boundary.
 
 ## Operations and evidence
 

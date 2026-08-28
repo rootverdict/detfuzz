@@ -35,10 +35,15 @@ rule-resilience finding, not a claim that the fixture is malicious.
 
 ## V1 status
 
-V1.0.1 is complete and locally verified on 2026-08-13 with the pinned
-development toolchain. It adds fail-closed suite-health, clock-status, and
-report-contract hardening while preserving the same deliberately narrow V1
-experiment.
+V1.0.2 is the current maintenance release. It was locally verified on
+2026-08-28 with the pinned development toolchain. It preserves the deliberately
+narrow V1 experiment while adding fail-closed XML parsing, explicit handling of
+malformed caller-supplied telemetry, and stricter security-lint enforcement.
+
+The latest live Windows experiment remains the V1.0.1 run from 2026-08-13. Its
+bundle is retained unchanged rather than being relabeled as V1.0.2 evidence;
+the maintenance release changes parser failure handling and project hardening,
+not the recorded lab result below.
 
 The latest end-to-end run produced:
 
@@ -261,10 +266,13 @@ Ruff: all checks passed
 mypy: no issues found in 31 source files
 ```
 
-The v1.0.1 release was validated at 95 tests; the three additional tests cover
-the DOCTYPE rejection added after that release. `docs/v1-local-validation.md`
-and the release manifest retain the 95/94 figures deliberately, as a
-point-in-time record of the validated run rather than a claim about this tree.
+The v1.0.1 live release was validated at 95 tests. V1.0.2 adds three DOCTYPE
+tests and hardens missing/non-numeric Event IDs, mid-poll parse failures, and the
+`evaluate-detection` CLI error path. `docs/v1-local-validation.md` and the
+release manifest retain the historical 95/94 figures deliberately, as a
+point-in-time record of the validated VM run rather than a claim about this
+tree. See [`docs/v1.0.2-maintenance-release.md`](docs/v1.0.2-maintenance-release.md)
+for the maintenance-release boundary.
 
 ## V1 boundary
 
